@@ -535,6 +535,132 @@ img {
   color: var(--gold);
 }
 
+/* ---------------------------------------------------------------- *
+ * Modal header: heading + blurb on the left, status chip on the right
+ * ---------------------------------------------------------------- */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.head-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.head-icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+}
+
+.head-text {
+  min-width: 0;
+}
+
+.panel-head .head-title {
+  font-size: clamp(20px, 5.2vw, 27px);
+  line-height: 1.1;
+  margin: 0;
+  color: #fff4dc;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.head-sub {
+  font-size: 13.5px;
+  color: rgba(251, 236, 205, 0.68);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.head-right {
+  flex: none;
+}
+
+/* gold purse (shop) */
+.purse {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #56411f 0%, #372a14 100%);
+  border: 3px solid var(--gold-dark);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.11), 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.purse img {
+  width: 26px;
+  height: 26px;
+}
+
+.purse span {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* level chip (level-up) */
+.level-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  min-width: 66px;
+  padding: 6px 12px 7px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #35618a 0%, #1f3b57 100%);
+  border: 3px solid var(--blue);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.13), 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.level-badge .lv {
+  font-size: 10.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #a8e6ff;
+  margin-bottom: 3px;
+}
+
+.level-badge strong {
+  font-size: 25px;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------------- *
+ * Panel themes — the shop reads warm and wooden, the level-up cool
+ * and arcane, so the two are never mistaken for each other.
+ * ---------------------------------------------------------------- */
+.panel.is-shop {
+  border-color: #7d5c2c;
+  background: linear-gradient(180deg, #4d3d26 0%, #35291b 55%, #241c12 100%);
+}
+
+.panel.is-shop .panel-head {
+  border-bottom-color: rgba(245, 197, 66, 0.3);
+}
+
+.panel.is-levelup {
+  border-color: #46608c;
+  background: linear-gradient(180deg, #36426e 0%, #262e52 55%, #1a2038 100%);
+}
+
+.panel.is-levelup .panel-head {
+  border-bottom-color: rgba(122, 190, 255, 0.28);
+}
+
 .choices {
   display: flex;
   flex-direction: column;
@@ -565,6 +691,24 @@ img {
   border-color: var(--gold);
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 0 18px rgba(245, 197, 66, 0.3);
   outline: none;
+}
+
+/* per-theme row colour + hover accent */
+.panel.is-shop .choice {
+  background: linear-gradient(180deg, #5e4930 0%, #42341f 100%);
+  border-color: #6d5432;
+}
+
+.panel.is-shop .choice:hover:not(:disabled),
+.panel.is-shop .choice:focus-visible:not(:disabled) {
+  border-color: var(--gold);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 0 20px rgba(245, 197, 66, 0.38);
+}
+
+.panel.is-levelup .choice:hover:not(:disabled),
+.panel.is-levelup .choice:focus-visible:not(:disabled) {
+  border-color: #7abeff;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 0 20px rgba(122, 190, 255, 0.36);
 }
 
 .choice:active:not(:disabled) {
@@ -612,32 +756,78 @@ img {
   min-width: 0;
 }
 
+/* Both are spans, so they need to be blocks or the name and the
+   description run together and wrap mid-phrase on narrow screens. */
 .choice .c-name {
+  display: block;
   font-size: 18px;
   font-weight: 700;
   color: #fff4dc;
   margin-bottom: 2px;
+  line-height: 1.2;
 }
 
 .choice .c-desc {
+  display: block;
   font-size: 14px;
   color: rgba(251, 236, 205, 0.76);
   line-height: 1.3;
 }
 
+/* keycap: makes "press 1/2/3" legible without reading the hint line */
+.c-key {
+  flex: none;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(10, 12, 24, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.17);
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(251, 236, 205, 0.85);
+}
+
+/* price tag */
 .choice .c-cost {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
+  min-width: 62px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: rgba(10, 12, 24, 0.45);
+  border: 2px solid var(--gold-dark);
   font-size: 17px;
   font-weight: 700;
   color: var(--gold);
+  font-variant-numeric: tabular-nums;
 }
 
 .choice .c-cost img {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
+}
+
+/* cannot afford: keep it readable, just flag the price */
+.choice.too-expensive .c-cost {
+  border-color: var(--red-dark);
+  color: #ffb0a6;
+}
+
+/* bought: price tag becomes a tick, description confirms it */
+.choice .c-cost.is-owned {
+  border-color: var(--green-dark);
+  color: #c9f5b0;
+  font-size: 20px;
+}
+
+.choice.is-sold .c-desc {
+  color: #a8e08a;
+  font-weight: 700;
 }
 
 .btn-row {
@@ -854,6 +1044,70 @@ img {
 }
 
 /* ---------------------------------------------------------------- *
+ * Narrow viewports: keep the header on one line and the rows compact
+ * ---------------------------------------------------------------- */
+@media (max-width: 430px) {
+  .panel {
+    padding: 16px 14px 14px;
+  }
+  .head-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .panel-head .head-title {
+    font-size: 19px;
+  }
+  .head-sub {
+    font-size: 12px;
+  }
+  .purse {
+    padding: 6px 10px;
+  }
+  .purse img {
+    width: 22px;
+    height: 22px;
+  }
+  .purse span {
+    font-size: 19px;
+  }
+  .level-badge {
+    min-width: 54px;
+    padding: 5px 10px 6px;
+  }
+  .level-badge strong {
+    font-size: 21px;
+  }
+  .choice {
+    padding: 10px 11px;
+    gap: 9px;
+  }
+  .choice .c-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .choice .c-name {
+    font-size: 16px;
+  }
+  .choice .c-desc {
+    font-size: 13px;
+  }
+  .choice .c-cost {
+    min-width: 54px;
+    font-size: 15px;
+    padding: 4px 8px;
+  }
+  .choice .c-cost img {
+    width: 17px;
+    height: 17px;
+  }
+  .c-key {
+    width: 22px;
+    height: 22px;
+    font-size: 12.5px;
+  }
+}
+
+/* ---------------------------------------------------------------- *
  * Short viewports: tighten the modals so buttons stay reachable
  * ---------------------------------------------------------------- */
 @media (max-height: 620px) {
@@ -884,5 +1138,29 @@ img {
      rather than let it push the buttons off a short screen. */
   .unit-preview {
     display: none;
+  }
+  .panel-head {
+    padding-bottom: 9px;
+    margin-bottom: 10px;
+  }
+  .head-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .head-sub {
+    display: none;
+  }
+  .purse {
+    padding: 5px 10px;
+  }
+  .purse span {
+    font-size: 19px;
+  }
+  .level-badge {
+    min-width: 56px;
+    padding: 4px 10px 5px;
+  }
+  .level-badge strong {
+    font-size: 21px;
   }
 }

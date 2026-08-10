@@ -84,6 +84,23 @@ export const IMAGES = {
 };
 
 /**
+ * Per-icon zoom for the DOM UI.
+ *
+ * The pack's icons do not fill their frames equally: measured content
+ * boxes inside a 64px frame run from 20px (Tool_03) to 63px (Icon_06).
+ * Left alone, a sword reads a third the weight of a shield in the same
+ * row. These factors even them out; anything absent renders at 1.
+ * (Numbers via `npm run probe -- <file> --frame 64x64`.)
+ */
+export const ICON_ZOOM = {
+  icon_sword: 2.9, // Tool_03 — 20px of content
+  icon_hammer: 2.1, // Tool_01 — 28px
+  icon_axe: 2.15, // Tool_02 — 27px
+  icon_meat_res: 1.25, // Meat Resource — 47px
+  icon_arrow_up: 1.15, // Icon_07 — 43x51px
+};
+
+/**
  * Vite substitutes the configured `base` here at build time, so the game
  * works when served from a subpath (GitHub Pages project sites live at
  * /<repo>/). Falls back to a relative path outside a Vite bundle.

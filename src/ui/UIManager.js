@@ -1,5 +1,6 @@
 import { getUnit } from '../data/units.js';
 import { BOSS_EVERY } from '../data/enemies.js';
+import { ICON_ZOOM } from '../data/assets.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -267,10 +268,41 @@ export class UIManager {
   // modals
   // ---------------------------------------------------------------- //
 
-  openPanel(html) {
-    this.el.overlay.innerHTML = `<div class="panel">${html}</div>`;
+  /**
+   * `<img>` for a UI icon, evening out how much of its frame each one
+   * actually fills (see ICON_ZOOM).
+   */
+  iconImg(key, className) {
+    const zoom = ICON_ZOOM[key];
+    const style = zoom ? ` style="transform:scale(${zoom})"` : '';
+    return `<img class="${className}" src="${this.assets.url(key)}" alt=""${style} />`;
+  }
+
+  /** @param {string} [modifier] theme class, e.g. 'is-shop' / 'is-levelup' */
+  openPanel(html, modifier = '') {
+    this.el.overlay.innerHTML = `<div class="panel ${modifier}">${html}</div>`;
     this.el.overlay.classList.remove('hidden');
     return this.el.overlay.firstElementChild;
+  }
+
+  /**
+   * Shared modal header: heading and blurb on the left, a status chip on
+   * the right. The shop and the level-up screen share this structure so
+   * they feel like one family, while their chip, icon and colour theme
+   * make it obvious at a glance which one you are looking at.
+   */
+  panelHeader({ icon, title, sub, right = '' }) {
+    return `
+      <header class="panel-head">
+        <div class="head-left">
+          ${icon ? this.iconImg(icon, 'head-icon') : ''}
+          <div class="head-text">
+            <h2 class="head-title">${esc(title)}</h2>
+            <div class="head-sub">${esc(sub)}</div>
+          </div>
+        </div>
+        <div class="head-right">${right}</div>
+      </header>`;
   }
 
   closePanel() {
@@ -305,14 +337,19 @@ export class UIManager {
     ].join(';');
   }
 
-  choiceHtml(item, index, { cost = null, affordable = true } = {}) {
+  /**
+   * One selectable row. `cost` adds a price tag (shop only); the keycap
+   * reinforces that slot N is bound to number key N.
+   */
+  choiceHtml(item, index, { cost = null } = {}) {
     const costHtml =
       cost === null
         ? ''
         : `<span class="c-cost"><img src="${this.assets.url('icon_gold')}" alt="gold" />${cost}</span>`;
     return `
-      <button class="choice" data-index="${index}" ${affordable ? '' : 'disabled'}>
-        <img class="c-icon" src="${this.assets.url(item.icon)}" alt="" />
+      <button class="choice" data-index="${index}">
+        <span class="c-key">${index + 1}</span>
+        ${this.iconImg(item.icon, 'c-icon')}
         <span class="c-body">
           <span class="c-name">${esc(item.name)}</span>
           <span class="c-desc">${esc(item.desc)}</span>
@@ -366,14 +403,21 @@ export class UIManager {
    * @returns {Promise<object>} the chosen upgrade
    */
   showLevelUp(choices, player) {
-    const panel = this.openPanel(`
-      <h2>LEVEL UP!</h2>
-      <p class="sub">You are now <b>level ${player.level}</b>. Choose one reward.</p>
+    const panel = this.openPanel(
+      `
+      ${this.panelHeader({
+        icon: 'icon_arrow_up',
+        title: 'Level Up!',
+        sub: 'Choose one reward',
+        right: `<div class="level-badge"><span class="lv">Level</span><strong>${player.level}</strong></div>`,
+      })}
       <div class="choices">
         ${choices.map((item, i) => this.choiceHtml(item, i)).join('')}
       </div>
       <p class="keyhint">Press 1, 2 or 3 to choose</p>
-    `);
+    `,
+      'is-levelup',
+    );
 
     return new Promise((resolve) => {
       const buttons = [...panel.querySelectorAll('.choice')];
@@ -397,9 +441,17 @@ export class UIManager {
    * @returns {Promise<void>}
    */
   showShop(offers, player, onBuy) {
-    const panel = this.openPanel(`
-      <h2>&#128176; Camp Merchant</h2>
-      <p class="sub">Boss defeated! You carry <b><span id="shop-gold">${player.gold}</span> gold</b>.</p>
+    const panel = this.openPanel(
+      `
+      ${this.panelHeader({
+        icon: 'icon_gold',
+        title: 'Camp Merchant',
+        sub: 'Spend your spoils',
+        right: `<div class="purse">
+                  <img src="${this.assets.url('icon_gold')}" alt="gold" />
+                  <span id="shop-gold">${player.gold}</span>
+                </div>`,
+      })}
       <div class="choices">
         ${offers.map((item, i) => this.choiceHtml(item, i, { cost: item.cost })).join('')}
       </div>
@@ -407,7 +459,9 @@ export class UIManager {
         <button class="btn" id="btn-continue">Continue &#8594;</button>
       </div>
       <p class="keyhint">Press 1, 2 or 3 to buy &middot; Enter to continue</p>
-    `);
+    `,
+      'is-shop',
+    );
 
     const goldLabel = panel.querySelector('#shop-gold');
     const buttons = [...panel.querySelectorAll('.choice')];
@@ -426,14 +480,23 @@ export class UIManager {
       goldLabel.textContent = String(player.gold);
       buttons.forEach((button, index) => {
         const offer = offers[index];
+        const cost = button.querySelector('.c-cost');
         if (offer.sold) {
           button.disabled = true;
           button.classList.add('is-sold');
+          button.classList.remove('too-expensive');
           const desc = button.querySelector('.c-desc');
           if (desc) desc.textContent = 'Purchased';
-          button.querySelector('.c-cost')?.remove();
+          // Swap the price for a tick rather than removing the tag, so the
+          // row keeps its width and nothing reflows under the cursor.
+          if (cost && !cost.classList.contains('is-owned')) {
+            cost.classList.add('is-owned');
+            cost.innerHTML = '&#10003;';
+          }
         } else {
-          button.disabled = player.gold < offer.cost;
+          const tooDear = player.gold < offer.cost;
+          button.disabled = tooDear;
+          button.classList.toggle('too-expensive', tooDear);
         }
       });
     };
