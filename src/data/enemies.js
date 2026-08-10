@@ -98,6 +98,24 @@ const SHEETS = {
  */
 
 /**
+ * Visual signature per family, keyed by the same `voice` names: the
+ * colour and particle style of its entrance, hit and death effects.
+ *
+ *   puff   — slow drifting clouds (wool)
+ *   shards — fast metallic slivers that drop sharply (armour)
+ *   wisps  — arcane motes floating upward
+ *   sparks — classic burst in the family colour
+ */
+export const FAMILY_FX = {
+  beast: { color: '#f6efdd', glow: '#fff8e6', style: 'puff' },
+  goblin: { color: '#8fd44a', glow: '#c8f090', style: 'sparks' },
+  knight: { color: '#d5dcea', glow: '#ffffff', style: 'shards' },
+  archer: { color: '#f0a050', glow: '#ffd8a8', style: 'sparks' },
+  // deathSheet: an FX_SHEETS animation layered on this family's death
+  mystic: { color: '#b678ec', glow: '#e2c6ff', style: 'wisps', deathSheet: 'phantom' },
+};
+
+/**
  * Normal enemies, cycled in order. `heightMul` nudges the rendered size
  * so a sheep does not end up as tall as a knight.
  */

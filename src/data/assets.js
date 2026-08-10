@@ -9,6 +9,14 @@
 
 export const ASSET_ROOT = 'assets/tiny-swords/';
 
+/**
+ * Extra effect sheets from CodeManu's public-domain "Free Pixel Effects
+ * Pack" (https://codemanu.itch.io/pixelart-effect-pack) — see
+ * public/assets/fx/pixel-effects/ATTRIBUTION.txt. Entries opt into this
+ * root with `root: FX_ROOT`.
+ */
+export const FX_ROOT = 'assets/fx/';
+
 /** key -> { path, fallback } (fallback = placeholder tint if absent) */
 export const IMAGES = {
   // ---- player unit sprite sheets (Units/<Colour> Units/...) --------
@@ -50,6 +58,9 @@ export const IMAGES = {
   fx_dust: { path: 'Particle FX/Dust_01.png', fallback: '#e8dcc0' },
   fx_dust_big: { path: 'Particle FX/Dust_02.png', fallback: '#d8cbb0' },
   fx_impact: { path: 'Effects/Explosion/Explosions.png', fallback: '#ffb040' },
+  fx_freezing: { path: 'pixel-effects/19_freezing_spritesheet.png', root: FX_ROOT, fallback: '#bfeaff' },
+  fx_phantom: { path: 'pixel-effects/14_phantom_spritesheet.png', root: FX_ROOT, fallback: '#b678ec' },
+  fx_flame: { path: 'pixel-effects/11_fire_spritesheet.png', root: FX_ROOT, fallback: '#ff8a3a' },
 
   // ---- environment ----------------------------------------------
   ground_tiles: { path: 'Terrain/Ground/Tilemap_Flat.png', fallback: '#6aa84f' },
@@ -119,8 +130,8 @@ export const ICON_ZOOM = {
  */
 const BASE_URL = import.meta.env?.BASE_URL ?? './';
 
-/** URL for an image key, safe for the pack's spaces and parentheses. */
-export function assetUrl(path) {
+/** URL for an image path, safe for the pack's spaces and parentheses. */
+export function assetUrl(path, root = ASSET_ROOT) {
   const encoded = path.split('/').map(encodeURIComponent).join('/');
-  return `${BASE_URL}${BASE_URL.endsWith('/') ? '' : '/'}${ASSET_ROOT}${encoded}`;
+  return `${BASE_URL}${BASE_URL.endsWith('/') ? '' : '/'}${root}${encoded}`;
 }

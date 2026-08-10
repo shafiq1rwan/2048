@@ -29,7 +29,7 @@ export class AssetManager {
 
     await Promise.all(
       entries.map(async ([key, def]) => {
-        const url = assetUrl(def.path);
+        const url = assetUrl(def.path, def.root);
         try {
           const texture = await this.loadTexture(url);
           this.configure(texture);

@@ -322,6 +322,8 @@ export class Game {
     // impact — the victim yelps in its own voice
     this.sound.play(hit.crit ? 'crit' : 'enemyHit', { voice: enemy.voice, boss: enemy.isBoss });
     this.effects.hitBurst(target.x, target.y, { size: 130 + merge.level * 14 });
+    // the victim sheds its own particles — wool, shards, wisps...
+    this.effects.familyBurst(target.x, target.y, enemy.voice, { count: 5 + merge.level });
     this.effects.damageNumber(target.x, target.y + 30, hit.damage, {
       kind: 'enemy',
       crit: hit.crit,
@@ -648,6 +650,11 @@ export class Game {
       const rubble = this.board.addRubble(cell.row, cell.col, 4);
       if (rubble) {
         this.boardView.addTile(rubble);
+        // the crater smoulders for a beat (CodeManu FX pack)
+        this.effects.playSheet('flame', to.x, to.y + BOARD.cell * 0.24, {
+          size: BOARD.cell * 0.9,
+          additive: true,
+        });
         if (!this.rubbleExplained) {
           this.rubbleExplained = true;
           this.ui.toast('Rubble blocks that cell — kill the enemy to clear it!', 'warn');
@@ -690,13 +697,8 @@ export class Game {
     }
 
     this.effects.flashRing(to.x, to.y, { size: 170, color: '#bfeaff', duration: 320 });
-    this.effects.sparks(to.x, to.y, {
-      count: 12,
-      color: '#bfeaff',
-      speed: 170,
-      size: 11,
-      life: 0.5,
-    });
+    // swirling snow (CodeManu FX pack) settles over the freezing unit
+    this.effects.playSheet('freezing', to.x, to.y, { size: BOARD.cell * 1.5, additive: true });
     this.effects.damageNumber(to.x, to.y + BOARD.cell * 0.4, 'FROZEN', { kind: 'freeze' });
     if (!this.freezeExplained) {
       this.freezeExplained = true;

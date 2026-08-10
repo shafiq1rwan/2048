@@ -3,6 +3,7 @@ import { EffectSprite, UNIT_PLANE } from './SpriteAnimator.js';
 import { glowTexture, orbTexture, textTexture, starsTexture } from './Textures.js';
 import { RENDER_LAYER, TIME } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
+import { FAMILY_FX } from '../data/enemies.js';
 
 /** Tiny Swords effect sheets, geometry probed from the real files. */
 const FX_SHEETS = {
@@ -25,6 +26,20 @@ const FX_SHEETS = {
   dustBig: {
     image: 'fx_dust_big',
     frameW: 64, frameH: 64, cols: 10, rows: 1, row: 0, frames: 10, fps: 22,
+  },
+  // From CodeManu's public-domain Free Pixel Effects Pack (100px grid).
+  // Multi-row sheets play one full-cycle row — the animator is per-row.
+  freezing: {
+    image: 'fx_freezing',
+    frameW: 100, frameH: 100, cols: 10, rows: 10, row: 2, frames: 10, fps: 16,
+  },
+  phantom: {
+    image: 'fx_phantom',
+    frameW: 100, frameH: 100, cols: 8, rows: 8, row: 2, frames: 8, fps: 12,
+  },
+  flame: {
+    image: 'fx_flame',
+    frameW: 100, frameH: 100, cols: 8, rows: 8, row: 0, frames: 8, fps: 12,
   },
 };
 
@@ -169,6 +184,64 @@ export class Effects {
     this.sparks(x, y, { count: 9, color: '#ffe08a', speed: 240, size: 13 });
   }
 
+  /**
+   * A burst in a character family's visual signature (FAMILY_FX, keyed
+   * by the same voice names the audio uses): wool puffs, metal shards,
+   * arcane wisps or coloured sparks. Layered on spawns, hits and deaths
+   * so who you are fighting reads in the particles too.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {string} family a FAMILY_FX key (enemy.voice)
+   */
+  familyBurst(x, y, family, { count = 10, big = false } = {}) {
+    const fx = FAMILY_FX[family] ?? FAMILY_FX.goblin;
+    const k = big ? 1.6 : 1;
+    switch (fx.style) {
+      case 'puff':
+        // slow wool clouds that drift apart and sag gently
+        this.sparks(x, y, {
+          count: Math.round(count * 0.8),
+          color: fx.color,
+          speed: 95 * k,
+          size: 18,
+          life: 0.8,
+          gravity: -90,
+        });
+        this.dust(x, y - 16, { size: 84 * k });
+        break;
+      case 'shards':
+        // fast metallic slivers that drop sharply, with a steel glint
+        this.sparks(x, y, {
+          count,
+          color: fx.color,
+          speed: 350 * k,
+          size: 8,
+          life: 0.38,
+          gravity: -900,
+        });
+        this.flashRing(x, y, { size: 95 * k, color: fx.glow, duration: 150 });
+        break;
+      case 'wisps':
+        // arcane motes released upward, hanging in the air
+        this.sparks(x, y, {
+          count,
+          color: fx.color,
+          speed: 130 * k,
+          size: 12,
+          life: 0.9,
+          angle: Math.PI / 2,
+          spread: Math.PI * 0.9,
+          gravity: -40,
+        });
+        this.glowPulse(x, y, { size: 150 * k, color: fx.glow, duration: 440 });
+        break;
+      default:
+        this.sparks(x, y, { count, color: fx.color, speed: 250 * k, size: 11, life: 0.5 });
+        break;
+    }
+  }
+
   /** Merge pop on the board. */
   mergePop(x, y, { size = 130, color = '#ffe6a0' } = {}) {
     this.playSheet('burst', x, y, { size, additive: true });
@@ -176,8 +249,8 @@ export class Effects {
     this.sparks(x, y, { count: 8, color, speed: 190, size: 11, life: 0.42 });
   }
 
-  /** Enemy death: layered explosions plus a shower of dust. */
-  deathExplosion(x, y, { size = 190, boss = false } = {}) {
+  /** Enemy death: layered explosions plus the family's own send-off. */
+  deathExplosion(x, y, { size = 190, boss = false, family = null } = {}) {
     this.playSheet('explosion', x, y, { size });
     if (boss) {
       this.tweens.after(110, () => this.playSheet('explosion', x - size * 0.3, y + size * 0.12, { size: size * 0.8 }));
@@ -186,6 +259,16 @@ export class Effects {
     this.playSheet('dustBig', x, y - size * 0.28, { size: size * 0.9 });
     this.sparks(x, y, { count: boss ? 26 : 16, color: '#ffd45e', speed: 330, size: 15, life: 0.7 });
     this.flashRing(x, y, { size: size * 2.1, color: '#fff6d8', duration: 300 });
+    if (family) {
+      this.familyBurst(x, y + 10, family, { count: boss ? 16 : 11, big: boss });
+      // some families get a signature send-off animation (mystic soul)
+      const deathSheet = FAMILY_FX[family]?.deathSheet;
+      if (deathSheet) {
+        this.tweens.after(140, () =>
+          this.playSheet(deathSheet, x, y + 34, { size: boss ? 230 : 170, additive: true }),
+        );
+      }
+    }
   }
 
   /** Puff of dust where a tile lands or a foot stomps. */
@@ -256,7 +339,9 @@ export class Effects {
 
   /**
    * An energy bolt that travels from a merged tile to the enemy.
-   * @returns {Promise<void>} resolves when it lands
+   * @returns {Promise<boolean>} true when it lands, false if cancelled
+   *          (restart) — same contract as lob(), so callers can gate
+   *          their impact effects on the flight arriving
    */
   bolt(from, to, { color = '#ffe08a', duration = TIME.projectile, width = 26 } = {}) {
     const dx = to.x - from.x;
@@ -299,11 +384,11 @@ export class Effects {
         },
         onComplete: () => {
           this.removeTransient(mesh);
-          resolve();
+          resolve(true);
         },
         onCancel: () => {
           this.removeTransient(mesh);
-          resolve();
+          resolve(false);
         },
       });
     });

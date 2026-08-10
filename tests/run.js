@@ -16,7 +16,7 @@ import { CombatSystem, comboMultiplier, COMBO } from '../src/combat/CombatSystem
 import { EnemyManager } from '../src/progression/EnemyManager.js';
 import { UpgradeSystem } from '../src/progression/UpgradeSystem.js';
 import { ShopSystem } from '../src/progression/ShopSystem.js';
-import { buildEnemy, BOSS_EVERY } from '../src/data/enemies.js';
+import { buildEnemy, BOSS_EVERY, FAMILY_FX } from '../src/data/enemies.js';
 import { VOICES } from '../src/audio/SoundManager.js';
 import { getUnit, UNITS, unitPower } from '../src/data/units.js';
 import { UPGRADES, SHOP_ITEMS } from '../src/data/upgrades.js';
@@ -819,6 +819,15 @@ test('every enemy speaks with a defined voice', () => {
   for (let index = 0; index < 30; index++) {
     const def = buildEnemy(index);
     assert.ok(VOICES[def.voice], `${def.name} has unknown voice "${def.voice}"`);
+  }
+});
+
+test('every voice has a matching visual signature', () => {
+  for (const voice of Object.keys(VOICES)) {
+    const fx = FAMILY_FX[voice];
+    assert.ok(fx, `voice "${voice}" has no FAMILY_FX entry`);
+    assert.ok(/^#[0-9a-f]{6}$/i.test(fx.color), `bad color for "${voice}"`);
+    assert.ok(['puff', 'shards', 'wisps', 'sparks'].includes(fx.style), `bad style for "${voice}"`);
   }
 });
 

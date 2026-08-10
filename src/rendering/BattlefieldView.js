@@ -3,6 +3,7 @@ import { SpriteEntity, UNIT_PLANE } from './SpriteAnimator.js';
 import { skyTexture, hillsTexture, shadowTexture, glowTexture } from './Textures.js';
 import { SCENE, RENDER_LAYER, TIME, DESIGN, SHAKE } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
+import { FAMILY_FX } from '../data/enemies.js';
 
 /** Where each piece of scenery stands. x is mirrored for |x| > design edge. */
 const DECOR = [
@@ -260,6 +261,8 @@ export class BattlefieldView {
 
     const baseHeight = enemy.isBoss ? SCENE.bossHeight : SCENE.enemyHeight;
     this.enemyHeight = baseHeight * enemy.heightMul;
+    /** Family key for signature particles (spawn, death). */
+    this.enemyFamily = enemy.voice ?? 'goblin';
 
     const sprite = new SpriteEntity({
       texture: this.assets.clone(enemy.sheet.image),
@@ -291,10 +294,11 @@ export class BattlefieldView {
     this.enemyShadow = shadow;
 
     if (enemy.isBoss) {
+      // the menace aura glows in the boss's family colour
       const glow = new THREE.Mesh(
         UNIT_PLANE,
         new THREE.MeshBasicMaterial({
-          map: glowTexture({ color: '#ff6a4a', power: 2.6 }),
+          map: glowTexture({ color: FAMILY_FX[this.enemyFamily]?.color ?? '#ff6a4a', power: 2.6 }),
           transparent: true,
           depthTest: false,
           depthWrite: false,
@@ -344,6 +348,7 @@ export class BattlefieldView {
           this.enemyOffset.y = 0;
           this.enemyBusy = false;
           this.effects.dust(0, SCENE.enemyFeetY + 4, { size: 70 });
+          this.effects.familyBurst(0, SCENE.enemyFeetY + 34, this.enemyFamily, { count: 7 });
           resolve(true);
         },
         onCancel: () => resolve(false),
@@ -388,6 +393,10 @@ export class BattlefieldView {
             angle: 0,
           });
           this.effects.flashRing(0, SCENE.enemyFeetY + 20, { size: 380, color: '#ffd0a0', duration: 320 });
+          this.effects.familyBurst(0, SCENE.enemyFeetY + 40, this.enemyFamily, {
+            count: 13,
+            big: true,
+          });
           // land squash then settle
           this.tweens.add({
             duration: 110,
@@ -522,6 +531,7 @@ export class BattlefieldView {
     this.effects.deathExplosion(x, y + (this.enemyHeight ?? 120) * 0.45, {
       size: boss ? 300 : 190,
       boss,
+      family: this.enemyFamily,
     });
 
     await new Promise((resolve) => {

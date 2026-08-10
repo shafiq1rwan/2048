@@ -221,6 +221,10 @@ body read too small. Shrink `charH` until the *body* sets the scale.
 ## Credits
 
 Art: [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) by Pixel Frog.
+Extra effect animations (freeze, flame, phantom):
+[Free Pixel Effects Pack](https://codemanu.itch.io/pixelart-effect-pack) by
+CodeManu / Davit Masia — public domain, no credit required (see
+`public/assets/fx/pixel-effects/ATTRIBUTION.txt`).
 If you swap packs, update this section — most itch.io packs (RpgMix, for
 example, is CC-BY 4.0) require attribution.
 
