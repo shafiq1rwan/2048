@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Enemy roster + the scaling curves.
  *
  * Everything about difficulty lives in this file: change the four
@@ -86,14 +86,15 @@ const SHEETS = {
 
 /**
  * Attack patterns (cycled per swing, telegraphed to the player):
- *   strike — plain damage
- *   bomb   — 65% damage + rubble on an empty cell that walls the board
+ *   strike - plain damage
+ *   bomb   - 65% damage + rubble on an empty cell that walls the board
  *            off for a few moves
- *   freeze — no damage, but a random unit is frozen solid: it can't
+ *   freeze - no damage, but a random unit is frozen solid: it can't
  *            move or merge until it thaws
  * Killing the enemy clears every debuff it left, so sabotage is
  * pressure to finish it, not a slow bleed. Enemies without a pattern
- * default to ['strike'].
+ * default to ['strike']. `voice` picks the family's timbre in
+ * audio/SoundManager.js (default 'goblin').
  */
 
 /**
@@ -101,8 +102,8 @@ const SHEETS = {
  * so a sheep does not end up as tall as a knight.
  */
 export const ENEMIES = [
-  { name: 'Woolly Beast', sheet: SHEETS.sheep, heightMul: 0.62, hpMul: 0.85 },
-  { name: 'Goblin Torch', sheet: SHEETS.goblinTorchRed, heightMul: 0.92 },
+  { name: 'Woolly Beast', sheet: SHEETS.sheep, heightMul: 0.62, hpMul: 0.85, voice: 'beast' },
+  { name: 'Goblin Torch', sheet: SHEETS.goblinTorchRed, heightMul: 0.92, voice: 'goblin' },
   {
     name: 'Goblin Bomber',
     sheet: SHEETS.goblinTntRed,
@@ -110,16 +111,18 @@ export const ENEMIES = [
     hpMul: 0.92,
     atkMul: 1.15,
     pattern: ['strike', 'bomb'],
+    voice: 'goblin',
   },
-  { name: 'Goblin Brute', sheet: SHEETS.goblinTorchPurple, heightMul: 1.0, hpMul: 1.12 },
-  { name: 'Rogue Knight', sheet: SHEETS.warriorRed, heightMul: 1.0 },
-  { name: 'Dark Archer', sheet: SHEETS.archerBlack, heightMul: 0.98, hpMul: 0.9, atkMul: 1.2 },
+  { name: 'Goblin Brute', sheet: SHEETS.goblinTorchPurple, heightMul: 1.0, hpMul: 1.12, voice: 'goblin' },
+  { name: 'Rogue Knight', sheet: SHEETS.warriorRed, heightMul: 1.0, voice: 'knight' },
+  { name: 'Dark Archer', sheet: SHEETS.archerBlack, heightMul: 0.98, hpMul: 0.9, atkMul: 1.2, voice: 'archer' },
   {
     name: 'Sapper Goblin',
     sheet: SHEETS.goblinTntPurple,
     heightMul: 0.95,
     atkMul: 1.1,
     pattern: ['bomb', 'strike'],
+    voice: 'goblin',
   },
   {
     name: 'Cult Adept',
@@ -127,14 +130,16 @@ export const ENEMIES = [
     heightMul: 0.95,
     hpMul: 1.15,
     pattern: ['freeze', 'strike'],
+    voice: 'mystic',
   },
-  { name: 'Blade Marauder', sheet: SHEETS.warriorPurple, heightMul: 1.02 },
+  { name: 'Blade Marauder', sheet: SHEETS.warriorPurple, heightMul: 1.02, voice: 'knight' },
   {
     name: 'Crimson Ranger',
     sheet: SHEETS.archerRed,
     heightMul: 1.0,
     atkMul: 1.15,
     pattern: ['strike', 'freeze'],
+    voice: 'archer',
   },
 ];
 
@@ -145,14 +150,16 @@ export const BOSSES = [
     sheet: SHEETS.goblinTorchYellow,
     heightMul: 1.0,
     pattern: ['strike', 'bomb'],
+    voice: 'goblin',
   },
-  { name: 'The Black Knight', sheet: SHEETS.warriorBlack, heightMul: 1.0 },
+  { name: 'The Black Knight', sheet: SHEETS.warriorBlack, heightMul: 1.0, voice: 'knight' },
   {
     name: 'Warlord Grimtusk',
     sheet: SHEETS.goblinTorchPurple,
     heightMul: 1.05,
     atkMul: 1.1,
     pattern: ['bomb', 'strike'],
+    voice: 'goblin',
   },
   {
     name: 'Dread Sovereign',
@@ -160,6 +167,7 @@ export const BOSSES = [
     heightMul: 1.0,
     hpMul: 1.15,
     pattern: ['freeze', 'strike', 'bomb'],
+    voice: 'mystic',
   },
 ];
 
@@ -207,8 +215,10 @@ export function buildEnemy(index) {
     maxHp: Math.max(8, Math.round(scaleHp(index) * (template.hpMul ?? 1) * bossHp)),
     attack: Math.max(2, Math.round(scaleAtk(index) * (template.atkMul ?? 1) * bossAtk)),
     pattern: template.pattern ?? ['strike'],
+    voice: template.voice ?? 'goblin',
     countdownMax: countdownFor(index, isBoss),
     gold: Math.round(scaleGold(index) * bossReward),
     xp: Math.round(scaleXp(index) * bossReward),
   };
 }
+

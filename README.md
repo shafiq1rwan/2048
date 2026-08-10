@@ -181,7 +181,11 @@ State, rendering and input are separate: `board/`, `combat/` and
 - A missing file logs a warning and falls back to a flat colour placeholder,
   so the game always runs.
 - Sound is synthesised, because the pack contains no audio. `SoundManager.play(name)`
-  is the single hook if you want to drop in real samples later.
+  is the single hook if you want to drop in real samples later. Each enemy
+  family speaks in its own timbre (`voice` per roster entry in
+  `data/enemies.js`, profiles in `VOICES` in `audio/SoundManager.js`) for its
+  entrance, attack, pain and death — bosses play the same voice pitched down —
+  and the merge sound's timbre follows the unit ladder.
 
 ## Swapping in a different art pack
 

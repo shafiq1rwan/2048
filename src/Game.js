@@ -319,8 +319,8 @@ export class Game {
       { color: unit.edge, duration: TIME.projectile, width: 22 + merge.level * 3 },
     );
 
-    // impact
-    this.sound.play(hit.crit ? 'crit' : 'enemyHit');
+    // impact — the victim yelps in its own voice
+    this.sound.play(hit.crit ? 'crit' : 'enemyHit', { voice: enemy.voice, boss: enemy.isBoss });
     this.effects.hitBurst(target.x, target.y, { size: 130 + merge.level * 14 });
     this.effects.damageNumber(target.x, target.y + 30, hit.damage, {
       kind: 'enemy',
@@ -366,7 +366,7 @@ export class Game {
     this.ui.xpHold = true;
     this.ui.setXpDisplay(before.level, before.xp, before.xpToNext);
 
-    this.sound.play('enemyDeath');
+    this.sound.play('enemyDeath', { voice: enemy.voice, boss: wasBoss });
     this.renderer.shake.add(wasBoss ? SHAKE.bossDeath : SHAKE.enemyDeath, 7);
 
     // Its sabotage dies with it: rubble crumbles, frozen units thaw.
@@ -545,6 +545,8 @@ export class Game {
       this.sound.play('bossSpawn');
       this.ui.toast(`BOSS — ${enemy.name}`, 'warn');
     }
+    // every family announces itself in its own voice
+    this.sound.play('enemySpawn', { voice: enemy.voice, boss: enemy.isBoss });
 
     await this.battlefield.spawnEnemy(enemy);
     if (token !== this.runToken) return;
@@ -560,6 +562,8 @@ export class Game {
 
     const intent = enemy.intent;
     this.ui.updateCountdown(enemy);
+    // battle grunt on the wind-up, in the attacker's voice
+    this.sound.play('enemyAttack', { voice: enemy.voice, boss: enemy.isBoss });
     await this.battlefield.attackAnimation();
     if (!alive()) return;
 

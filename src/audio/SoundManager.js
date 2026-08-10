@@ -6,6 +6,29 @@
  * entry point the game uses, so swapping in real samples later means
  * changing this file alone.
  */
+
+/**
+ * Per-character timbres. Each enemy family carries a `voice` key in
+ * data/enemies.js; its entrance, pain, attack and death all speak in
+ * this timbre so a sheep never sounds like a knight. Bosses play the
+ * same voice pitched down.
+ *
+ *   base      fundamental pitch (Hz)
+ *   type      oscillator waveform
+ *   step      interval of the entrance call's second note
+ *   noiseFreq colour of the accompanying noise burst
+ *   clang     metallic ring (knights)
+ *   pluck     short snappy envelope (archers)
+ *   shimmer   airy highpass sparkle (mystics)
+ */
+export const VOICES = {
+  beast: { base: 520, type: 'triangle', step: 1.19, noiseFreq: 700 },
+  goblin: { base: 320, type: 'sawtooth', step: 1.33, noiseFreq: 1700 },
+  knight: { base: 200, type: 'square', step: 0.75, noiseFreq: 3400, clang: true },
+  archer: { base: 470, type: 'triangle', step: 1.5, noiseFreq: 2500, pluck: true },
+  mystic: { base: 660, type: 'sine', step: 1.25, noiseFreq: 5200, shimmer: true },
+};
+
 export class SoundManager {
   constructor({ muted = false } = {}) {
     this.muted = muted;
@@ -111,13 +134,18 @@ export class SoundManager {
 
   /**
    * @param {'merge'|'slide'|'spawn'|'invalid'|'attack'|'enemyHit'|'crit'
-   *        |'enemyDeath'|'bossSpawn'|'playerHit'|'block'|'levelUp'
-   *        |'gold'|'buy'|'deny'|'victory'|'gameOver'|'start'} name
-   * @param {{level?: number}} [opts]
+   *        |'enemySpawn'|'enemyAttack'|'enemyDeath'|'bossSpawn'
+   *        |'playerHit'|'block'|'levelUp'|'combo'|'bomb'|'freeze'
+   *        |'gold'|'coin'|'buy'|'deny'|'victory'|'gameOver'|'start'} name
+   * @param {{level?: number, voice?: string, boss?: boolean,
+   *          index?: number, step?: number}} [opts]
    */
   play(name, opts = {}) {
     if (!this.ready) return;
     const level = opts.level ?? 1;
+    // Which character family is speaking, pitched down for bosses.
+    const voice = VOICES[opts.voice] ?? VOICES.goblin;
+    const pitch = opts.boss ? 0.62 : 1;
 
     switch (name) {
       case 'slide':
@@ -129,10 +157,23 @@ export class SoundManager {
         break;
 
       case 'merge': {
-        // rising pitch with merge level so bigger merges sound bigger
+        // rising pitch with merge level so bigger merges sound bigger,
+        // and a timbre that follows the unit ladder: soft footmen,
+        // plucked archer, metallic lancers
         const base = 300 * Math.pow(1.14, Math.min(level, 12));
-        this.tone({ freq: base, type: 'square', duration: 0.09, gain: 0.11 });
-        this.tone({ freq: base * 1.5, type: 'triangle', duration: 0.14, gain: 0.1, delay: 0.045 });
+        if (level <= 2) {
+          this.tone({ freq: base, type: 'triangle', duration: 0.09, gain: 0.11 });
+          this.tone({ freq: base * 1.5, type: 'triangle', duration: 0.14, gain: 0.1, delay: 0.045 });
+        } else if (level === 3) {
+          // bow twang
+          this.tone({ freq: base * 1.7, type: 'triangle', duration: 0.05, gain: 0.12, slideTo: base * 1.15 });
+          this.tone({ freq: base, type: 'square', duration: 0.1, gain: 0.08, delay: 0.03 });
+        } else {
+          // armoured clang
+          this.tone({ freq: base, type: 'square', duration: 0.09, gain: 0.11 });
+          this.tone({ freq: base * 1.5, type: 'triangle', duration: 0.14, gain: 0.1, delay: 0.045 });
+          this.noise({ duration: 0.08, gain: 0.06, filterFreq: 3600, type: 'bandpass', delay: 0.02 });
+        }
         break;
       }
 
@@ -144,21 +185,82 @@ export class SoundManager {
         this.noise({ duration: 0.14, gain: 0.12, filterFreq: 3200, sweepTo: 500, type: 'bandpass' });
         break;
 
-      case 'enemyHit':
-        this.noise({ duration: 0.13, gain: 0.17, filterFreq: 900, sweepTo: 160 });
-        this.tone({ freq: 190, type: 'square', duration: 0.09, gain: 0.1, slideTo: 90 });
+      case 'enemyHit': {
+        // pain blip in the character's own timbre over the thud
+        const f = voice.base * pitch;
+        this.noise({ duration: 0.13, gain: 0.16, filterFreq: voice.noiseFreq, sweepTo: 160 });
+        this.tone({
+          freq: f * 1.35,
+          type: voice.type,
+          duration: voice.pluck ? 0.06 : 0.1,
+          gain: 0.11,
+          slideTo: f * 0.75,
+        });
+        if (voice.clang) {
+          this.noise({ duration: 0.09, gain: 0.07, filterFreq: 3800, type: 'bandpass' });
+        }
+        if (voice.shimmer) {
+          this.noise({ duration: 0.14, gain: 0.05, filterFreq: 5200, type: 'highpass' });
+        }
         break;
+      }
 
-      case 'crit':
+      case 'enemySpawn': {
+        // a two-note entrance call so each family announces itself
+        const f = voice.base * pitch;
+        this.tone({ freq: f, type: voice.type, duration: 0.11, gain: 0.09 });
+        this.tone({
+          freq: f * voice.step,
+          type: voice.type,
+          duration: voice.pluck ? 0.08 : 0.16,
+          gain: 0.08,
+          delay: 0.09,
+        });
+        if (voice.clang) {
+          this.noise({ duration: 0.12, gain: 0.05, filterFreq: 3400, type: 'bandpass', delay: 0.04 });
+        }
+        if (voice.shimmer) {
+          this.noise({ duration: 0.22, gain: 0.04, filterFreq: 6000, type: 'highpass' });
+        }
+        break;
+      }
+
+      case 'enemyAttack': {
+        // battle grunt on the wind-up, before the impact lands
+        const f = voice.base * pitch;
+        this.tone({ freq: f * 0.8, type: voice.type, duration: 0.12, gain: 0.09, slideTo: f * 1.1 });
+        this.noise({ duration: 0.12, gain: 0.06, filterFreq: voice.noiseFreq, sweepTo: 500, type: 'bandpass' });
+        break;
+      }
+
+      case 'crit': {
         this.noise({ duration: 0.2, gain: 0.2, filterFreq: 1600, sweepTo: 180 });
         this.tone({ freq: 880, type: 'square', duration: 0.09, gain: 0.11 });
         this.tone({ freq: 1320, type: 'square', duration: 0.13, gain: 0.09, delay: 0.06 });
+        // the victim's own yelp under the fanfare
+        const f = voice.base * pitch;
+        this.tone({ freq: f * 1.6, type: voice.type, duration: 0.12, gain: 0.09, slideTo: f * 0.6, delay: 0.05 });
         break;
+      }
 
-      case 'enemyDeath':
+      case 'enemyDeath': {
+        // falling death cry in the character's timbre over the rumble
+        const f = voice.base * pitch;
         this.noise({ duration: 0.4, gain: 0.19, filterFreq: 1400, sweepTo: 90 });
-        this.tone({ freq: 420, type: 'triangle', duration: 0.32, gain: 0.1, slideTo: 110 });
+        this.tone({ freq: f * 1.1, type: voice.type, duration: 0.3, gain: 0.1, slideTo: f * 0.35 });
+        this.tone({
+          freq: f * 0.7,
+          type: voice.type,
+          duration: 0.22,
+          gain: 0.07,
+          slideTo: f * 0.28,
+          delay: 0.1,
+        });
+        if (voice.shimmer) {
+          this.noise({ duration: 0.35, gain: 0.05, filterFreq: 5600, type: 'highpass', delay: 0.05 });
+        }
         break;
+      }
 
       case 'bossSpawn':
         this.tone({ freq: 90, type: 'sawtooth', duration: 0.7, gain: 0.15, slideTo: 55 });

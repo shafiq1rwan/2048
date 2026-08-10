@@ -20,6 +20,9 @@ export class Enemy {
     this.pattern = def.pattern ?? ['strike'];
     this.patternIndex = 0;
 
+    /** Which timbre this family speaks in (audio/SoundManager.js). */
+    this.voice = def.voice ?? 'goblin';
+
     this.goldReward = def.gold;
     this.xpReward = def.xp;
   }

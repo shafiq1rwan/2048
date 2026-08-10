@@ -17,6 +17,7 @@ import { EnemyManager } from '../src/progression/EnemyManager.js';
 import { UpgradeSystem } from '../src/progression/UpgradeSystem.js';
 import { ShopSystem } from '../src/progression/ShopSystem.js';
 import { buildEnemy, BOSS_EVERY } from '../src/data/enemies.js';
+import { VOICES } from '../src/audio/SoundManager.js';
 import { getUnit, UNITS, unitPower } from '../src/data/units.js';
 import { UPGRADES, SHOP_ITEMS } from '../src/data/upgrades.js';
 
@@ -811,6 +812,13 @@ test('every pattern in the roster uses known intents', () => {
     for (const intent of def.pattern) {
       assert.ok(known.has(intent), `${def.name} has unknown intent "${intent}"`);
     }
+  }
+});
+
+test('every enemy speaks with a defined voice', () => {
+  for (let index = 0; index < 30; index++) {
+    const def = buildEnemy(index);
+    assert.ok(VOICES[def.voice], `${def.name} has unknown voice "${def.voice}"`);
   }
 });
 
