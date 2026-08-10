@@ -208,6 +208,46 @@ export function glowTexture({ color = '#ffd45e', size = 256, power = 2.2 } = {})
   });
 }
 
+/** hex -> rgba() string, so gradients can fade a colour to transparent. */
+function rgba(hex, alpha) {
+  const value = hex.replace('#', '');
+  const full =
+    value.length === 3
+      ? value
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : value;
+  const num = parseInt(full, 16);
+  return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},${alpha})`;
+}
+
+/**
+ * Bright-cored mote for XP pickups.
+ *
+ * A plain radial falloff (glowTexture) is too diffuse at mote size — over
+ * bright grass it reads as a speck. This keeps a hot white core so the
+ * mote stays legible while still glowing.
+ */
+export function orbTexture({ color = '#8ae0ff', size = 128 } = {}) {
+  return memo(`orb:${color}:${size}`, () => {
+    const canvas = makeCanvas(size, size);
+    const ctx = canvas.getContext('2d');
+    const half = size / 2;
+    const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.17, '#ffffff');
+    grad.addColorStop(0.3, rgba(color, 0.95));
+    grad.addColorStop(0.55, rgba(color, 0.45));
+    grad.addColorStop(1, rgba(color, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(half, half, half, 0, Math.PI * 2);
+    ctx.fill();
+    return canvasTexture(canvas);
+  });
+}
+
 /** Flat soft ellipse — contact shadow under sprites. */
 export function shadowTexture({ size = 128 } = {}) {
   return memo(`shadow:${size}`, () => {

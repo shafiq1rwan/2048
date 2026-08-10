@@ -73,6 +73,8 @@ export class UIManager {
      */
     this.goldHold = false;
     this.goldShown = 0;
+    /** Same idea for the XP bar while its motes are in flight. */
+    this.xpHold = false;
 
     this.bindIcons();
     this.bindSoundButton();
@@ -215,15 +217,37 @@ export class UIManager {
     this.el.playerHpText.textContent = `${Math.max(0, player.hp)} / ${player.maxHp}`;
     this.el.playerHpBar?.classList.toggle('is-low', hpFraction > 0 && hpFraction <= 0.3);
 
-    this.el.playerLevel.textContent = `Lv ${player.level}`;
-    const xpFraction = player.xpToNext > 0 ? player.xp / player.xpToNext : 0;
-    this.el.playerXpFill.style.width = `${Math.min(1, xpFraction) * 100}%`;
-    this.el.playerXpText.textContent = `${player.xp} / ${player.xpToNext} XP`;
-
+    if (!this.xpHold) this.setXpDisplay(player.level, player.xp, player.xpToNext);
     if (!this.goldHold) this.setGoldDisplay(player.gold);
     this.el.playerScore.textContent = String(score);
 
     this.renderBadges(player);
+  }
+
+  /** Write level / XP straight into the XP row. */
+  setXpDisplay(level, xp, xpToNext) {
+    this.el.playerLevel.textContent = `Lv ${level}`;
+    const fraction = xpToNext > 0 ? xp / xpToNext : 0;
+    this.el.playerXpFill.style.width = `${Math.min(1, Math.max(0, fraction)) * 100}%`;
+    this.el.playerXpText.textContent = `${Math.round(xp)} / ${xpToNext} XP`;
+  }
+
+  /** Viewport-pixel centre of the XP bar — the motes' destination. */
+  xpAnchor() {
+    const el = this.el.playerXpFill?.closest('.bar-xp');
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width && !rect.height) return null;
+    return { x: rect.left + rect.width * 0.5, y: rect.top + rect.height / 2 };
+  }
+
+  /** Flash the XP bar as motes land in it. */
+  pulseXp() {
+    const el = this.el.playerXpFill?.closest('.bar-xp');
+    if (!el) return;
+    el.classList.remove('is-bump');
+    void el.offsetWidth;
+    el.classList.add('is-bump');
   }
 
   /** Write a value straight into the gold readout. */
@@ -348,22 +372,37 @@ export class UIManager {
   }
 
   /**
-   * Inline style that shows a single sprite-sheet frame in a DOM box,
-   * by scaling the whole sheet up and offsetting to the wanted cell.
-   * @param {{image:string, frameW:number, frameH:number, cols:number, rows:number, row?:number}} sprite
-   * @param {number} box rendered size of the frame in CSS pixels
+   * Inline style showing one sprite-sheet frame in a DOM box, cropped to
+   * the character rather than the frame: the element is exactly `box`
+   * square and the sheet is scaled and offset so the character's content
+   * box sits centred inside it.
+   *
+   * Cropping (rather than showing the whole padded frame and centring it)
+   * matters because centring an oversized child inside `overflow: hidden`
+   * clips from the scroll origin instead of symmetrically, which lops the
+   * sprite off-centre. Sizing from `charH` also means sheets with very
+   * different padding — a 320px Lancer frame and a 192px Pawn frame — come
+   * out at the same apparent scale.
+   *
+   * @param {object} sprite sheet descriptor (frameW/frameH/cols/rows/row/footY/charH/centerX)
+   * @param {number} box rendered size of the well, in CSS pixels
+   * @param {number} [fill] fraction of the well the character should occupy
    */
-  spriteFrameStyle(sprite, box) {
-    const height = box;
-    const width = box * (sprite.frameW / sprite.frameH);
+  spriteCropStyle(sprite, box, fill = 0.86) {
+    const target = box * fill;
+    const scale = target / sprite.charH;
+    const centerX = sprite.centerX ?? sprite.frameW / 2;
     const row = sprite.row ?? 0;
+    // Treat the content as a charH-sided square centred on centerX.
+    const contentLeft = centerX - sprite.charH / 2;
+    const contentTop = sprite.footY - sprite.charH;
+    const inset = (box - target) / 2;
     return [
-      `width:${width}px`,
-      `height:${height}px`,
-      // single quotes: this string lands inside a double-quoted style attribute
+      `width:${box}px`,
+      `height:${box}px`,
       `background-image:url('${this.assets.url(sprite.image)}')`,
-      `background-size:${width * sprite.cols}px ${height * sprite.rows}px`,
-      `background-position:0px ${-row * height}px`,
+      `background-size:${sprite.frameW * scale * sprite.cols}px ${sprite.frameH * scale * sprite.rows}px`,
+      `background-position:${inset - contentLeft * scale}px ${inset - (row * sprite.frameH + contentTop) * scale}px`,
       'background-repeat:no-repeat',
       'image-rendering:pixelated',
     ].join(';');
@@ -390,6 +429,38 @@ export class UIManager {
       </button>`;
   }
 
+  /** Stash (or clear) a deferred browser install prompt. */
+  setInstallPrompt(event) {
+    this.installPrompt = event;
+    const row = document.getElementById('install-row');
+    if (row) row.hidden = !event;
+  }
+
+  /**
+   * A visual "two of these make one of those" strip built from real unit
+   * frames — it explains the core mechanic faster than a sentence can.
+   */
+  mergeDemoHtml() {
+    const recruit = getUnit(1).sprite;
+    const swordsman = getUnit(2).sprite;
+    const box = (sprite, extra = '') =>
+      `<span class="demo-slot ${extra}"><span class="sprite-frame" style="${this.spriteCropStyle(
+        sprite,
+        56,
+        0.82,
+      )}"></span></span>`;
+    return `
+      <div class="merge-demo">
+        ${box(recruit)}
+        <span class="demo-op">+</span>
+        ${box(recruit)}
+        <span class="demo-op">=</span>
+        ${box(swordsman, 'is-result')}
+        <span class="demo-op demo-strike">&#9876;</span>
+      </div>
+      <p class="demo-caption">Two matching units merge &mdash; and the stronger one <b>attacks</b></p>`;
+  }
+
   /** @returns {Promise<void>} resolves when the player presses Start */
   showTitle() {
     const best = this.save.get('bestScore');
@@ -397,26 +468,39 @@ export class UIManager {
     const unit = this.save.get('highestUnit');
     const records =
       best > 0
-        ? `<dl class="stats">
-             <dt>Best score</dt><dd class="hi">${best}</dd>
-             <dt>Deepest floor</dt><dd>${floor}</dd>
-             <dt>Strongest unit</dt><dd>${unit > 0 ? `${esc(getUnit(unit).name)} (Lv ${unit})` : '&mdash;'}</dd>
-           </dl>`
+        ? `<div class="records">
+             <span class="rec"><i>Best</i><b>${best}</b></span>
+             <span class="rec"><i>Floor</i><b>${floor}</b></span>
+             <span class="rec"><i>Unit</i><b>${unit > 0 ? esc(getUnit(unit).name) : '&mdash;'}</b></span>
+           </div>`
         : '';
 
-    const panel = this.openPanel(`
-      <h1>MERGE KNIGHTS</h1>
-      <p class="sub">
-        Slide with <b>WASD</b>, <b>arrow keys</b> or <b>swipe</b>.<br />
-        Merge two matching units &rarr; the stronger unit <b>attacks the enemy</b>.<br />
-        Bigger merges hit far harder. Watch the attack countdown.
-      </p>
-      ${records}
-      <div class="btn-row">
-        <button class="btn" id="btn-start">&#9876; Start Run</button>
+    const panel = this.openPanel(
+      `
+      <div class="title-hero">
+        <h1 class="title-main">MERGE KNIGHTS</h1>
+        <p class="title-tag">2048 &times; fantasy RPG</p>
       </div>
-      <p class="keyhint">A boss guards every ${BOSS_EVERY}th floor.</p>
-    `);
+
+      ${this.mergeDemoHtml()}
+
+      <ul class="how-to">
+        <li>${this.iconImg('icon_arrow_up', 'ht-icon')}<span>Slide with <b>WASD</b>, <b>arrows</b> or <b>swipe</b></span></li>
+        <li>${this.iconImg('icon_swords', 'ht-icon')}<span>Bigger merges hit <b>far</b> harder</span></li>
+        <li>${this.iconImg('icon_shield', 'ht-icon')}<span>A <b>boss</b> guards every ${BOSS_EVERY}th floor</span></li>
+      </ul>
+
+      ${records}
+
+      <div class="btn-row">
+        <button class="btn btn-hero" id="btn-start">&#9876; Start Run</button>
+      </div>
+      <div class="btn-row" id="install-row"${this.installPrompt ? '' : ' hidden'}>
+        <button class="btn ghost btn-install" id="btn-install">&#8681; Install app</button>
+      </div>
+    `,
+      'is-title',
+    );
 
     return new Promise((resolve) => {
       const start = panel.querySelector('#btn-start');
@@ -425,6 +509,19 @@ export class UIManager {
         this.closePanel();
         resolve();
       });
+
+      panel.querySelector('#btn-install')?.addEventListener('click', async () => {
+        const prompt = this.installPrompt;
+        if (!prompt) return;
+        // A deferred prompt is single-use, so drop it either way.
+        this.setInstallPrompt(null);
+        try {
+          await prompt.prompt();
+        } catch (err) {
+          console.warn('[pwa] install prompt failed:', err);
+        }
+      });
+
       start.focus();
     });
   }
@@ -566,12 +663,7 @@ export class UIManager {
     const unit = getUnit(summary.highestUnit || 1);
     const unitImg = summary.highestUnit
       ? `<div class="unit-preview">
-           <span class="sprite-frame" style="${this.spriteFrameStyle(
-             unit.sprite,
-             // Size the box so the character itself reads ~62px tall no
-             // matter how much transparent padding its sheet carries.
-             (62 * unit.sprite.frameH) / unit.sprite.charH,
-           )}"></span>
+           <span class="sprite-frame" style="${this.spriteCropStyle(unit.sprite, 78, 0.88)}"></span>
            <div style="text-align:left">
              <div class="unit-preview-name">${esc(unit.name)}</div>
              <div class="unit-preview-sub">Strongest unit &middot; Lv ${summary.highestUnit}</div>

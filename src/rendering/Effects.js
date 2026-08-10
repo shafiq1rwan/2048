@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { EffectSprite, UNIT_PLANE } from './SpriteAnimator.js';
-import { glowTexture, textTexture, starsTexture } from './Textures.js';
+import { glowTexture, orbTexture, textTexture, starsTexture } from './Textures.js';
 import { RENDER_LAYER, TIME } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
 
@@ -381,8 +381,22 @@ export class Effects {
     return this._coinMaterial;
   }
 
+  /** Shared material for XP motes — additive so they read as light. */
+  orbMaterial() {
+    if (!this._orbMaterial) {
+      this._orbMaterial = new THREE.MeshBasicMaterial({
+        map: orbTexture({ color: '#8ae0ff' }),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+    }
+    return this._orbMaterial;
+  }
+
   /**
-   * Loot drop: coins burst out of the dying enemy, tumble under gravity
+   * Gold drop: coins burst out of the dying enemy, tumble under gravity
    * for a beat, then magnetise into the HUD purse one after another.
    *
    * @param {{x:number,y:number}} from world position of the kill
@@ -392,11 +406,59 @@ export class Effects {
    * @returns {Promise<boolean>} resolves once the last coin lands
    */
   goldBurst(from, to, amount, hooks = {}) {
+    // Enough coins to feel like loot, capped so a boss payout stays readable.
+    return this.lootBurst({
+      from,
+      to,
+      amount,
+      count: Math.max(4, Math.min(12, Math.round(amount / 6))),
+      material: this.coinMaterial(),
+      size: [23, 31],
+      spin: true,
+      landColor: '#ffd45e',
+      hooks,
+    });
+  }
+
+  /**
+   * XP drop: glowing motes drift out of the kill and stream into the XP
+   * bar. Same flight as the coins but lighter, slower and bluer, so the
+   * two rewards read as separate channels rather than one mess.
+   */
+  xpBurst(from, to, amount, hooks = {}) {
+    return this.lootBurst({
+      from,
+      to,
+      amount,
+      count: Math.max(3, Math.min(9, Math.round(amount / 7))),
+      material: this.orbMaterial(),
+      size: [30, 44],
+      spin: false,
+      pulse: true,
+      gravity: -420,
+      speed: [110, 220],
+      landColor: '#8ae0ff',
+      hooks,
+    });
+  }
+
+  /**
+   * The shared burst-then-magnetise flight used by gold and XP.
+   *
+   * @param {{from:{x:number,y:number}, to:{x:number,y:number}, amount:number,
+   *          count:number, material:THREE.Material, size:[number,number],
+   *          spin?:boolean, pulse?:boolean, gravity?:number,
+   *          speed?:[number,number], landColor:string, hooks:object}} opts
+   * @returns {Promise<boolean>} resolves once the last piece lands
+   */
+  lootBurst(opts) {
+    const { from, to, amount, material, landColor, hooks = {} } = opts;
     if (amount <= 0) return Promise.resolve(true);
 
-    // Enough coins to feel like loot, capped so a boss payout stays readable.
-    const count = Math.max(4, Math.min(12, Math.round(amount / 6)));
-    const material = this.coinMaterial();
+    const count = Math.max(1, opts.count);
+    const [minSize, maxSize] = opts.size;
+    const [minSpeed, maxSpeed] = opts.speed ?? [170, 330];
+    const gravity = opts.gravity ?? -900;
     let landed = 0;
     let first = true;
 
@@ -412,21 +474,24 @@ export class Effects {
       for (let i = 0; i < count; i++) {
         const mesh = new THREE.Mesh(UNIT_PLANE, material);
         mesh.renderOrder = RENDER_LAYER.effect + 5;
-        const size = rand(23, 31);
+        const size = rand(minSize, maxSize);
         mesh.scale.set(size, size, 1);
         mesh.position.set(from.x + rand(-16, 16), from.y + rand(-12, 12), 0);
         this.root.add(mesh);
 
         // fan upwards and outwards out of the corpse
         const angle = rand(Math.PI * 0.18, Math.PI * 0.82);
-        const speed = rand(170, 330);
+        const speed = rand(minSpeed, maxSpeed);
 
         this.coins.push({
           mesh,
           size,
+          gravity,
+          landColor,
+          pulse: Boolean(opts.pulse),
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          spin: rand(-9, 9),
+          spin: opts.spin ? rand(-9, 9) : 0,
           age: 0,
           scatter: TIME.goldScatter / 1000 + rand(0, 0.09),
           delay: (i * TIME.goldStagger) / 1000,
@@ -449,15 +514,14 @@ export class Effects {
     });
   }
 
-  /** Physics + magnet flight for dropped coins. */
+  /** Physics + magnet flight for dropped loot (coins and XP motes). */
   updateCoins(dt) {
-    const GRAVITY = -900;
     for (let i = this.coins.length - 1; i >= 0; i--) {
       const coin = this.coins[i];
       coin.age += dt;
 
       if (coin.phase === 'scatter') {
-        coin.vy += GRAVITY * dt;
+        coin.vy += coin.gravity * dt;
         coin.mesh.position.x += coin.vx * dt;
         coin.mesh.position.y += coin.vy * dt;
         coin.mesh.rotation.z += coin.spin * dt;
@@ -486,7 +550,9 @@ export class Effects {
         0,
       );
       coin.mesh.rotation.z += coin.spin * 1.7 * dt;
-      const shrink = coin.size * (1 - 0.35 * coin.t);
+      let shrink = coin.size * (1 - 0.35 * coin.t);
+      // XP motes breathe on the way in instead of tumbling
+      if (coin.pulse) shrink *= 1 + Math.sin(coin.age * 17) * 0.14;
       coin.mesh.scale.set(shrink, shrink, 1);
 
       if (coin.t >= 1) {
@@ -494,7 +560,7 @@ export class Effects {
         this.coins.splice(i, 1);
         this.flashRing(coin.to.x, coin.to.y, {
           size: 64,
-          color: '#ffd45e',
+          color: coin.landColor,
           duration: 190,
         });
         coin.onLand();

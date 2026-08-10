@@ -124,6 +124,7 @@ export class Game {
 
     this.boardView.syncAll(this.board.tiles());
     this.ui.goldHold = false;
+    this.ui.xpHold = false;
     this.ui.updatePlayer(this.player, this.score);
     this.ui.setHudVisible(true);
     this.ui.showHint();
@@ -296,30 +297,39 @@ export class Game {
     const wasBoss = enemy.isBoss;
     const floor = enemy.floor;
 
+    // Snapshot before rewards land: the HUD keeps showing these values
+    // until the dropped loot physically reaches the bars.
+    const before = {
+      gold: this.player.gold,
+      xp: this.player.xp,
+      level: this.player.level,
+      xpToNext: this.player.xpToNext,
+    };
+
     const rewards = this.combat.collectRewards();
     this.stats.enemies = this.enemies.defeated;
     this.stats.bosses = this.enemies.bossesDefeated;
     this.stats.goldEarned += rewards.gold;
     this.score += 25 * floor + (wasBoss ? 150 * floor : 0);
 
-    // The gold is banked in state now, but the readout stays put until the
-    // dropped coins actually reach the purse.
-    const goldBefore = this.player.gold - rewards.gold;
     this.ui.goldHold = true;
-    this.ui.setGoldDisplay(goldBefore);
+    this.ui.setGoldDisplay(before.gold);
+    this.ui.xpHold = true;
+    this.ui.setXpDisplay(before.level, before.xp, before.xpToNext);
 
     this.sound.play('enemyDeath');
     this.renderer.shake.add(wasBoss ? SHAKE.bossDeath : SHAKE.enemyDeath, 7);
 
     const anchor = this.battlefield.enemyAnchor();
     // Loot bursts out *with* the death explosion rather than queueing behind
-    // it, so the two beats overlap and the payoff lands sooner.
-    const goldFlight = this.collectGold(anchor, rewards.gold, goldBefore);
+    // it, so the two beats overlap and the payoff lands sooner. Gold streams
+    // right into the purse, XP left into the bar — two readable channels.
+    const goldFlight = this.collectGold(anchor, rewards.gold, before.gold);
+    const xpFlight = this.collectXp(anchor, rewards.xp, before, rewards.levelsGained > 0);
 
     await this.battlefield.die({ boss: wasBoss });
     if (!alive()) return;
 
-    this.effects.rewardPop(anchor.x + 42, anchor.y - 10, rewards.xp, 'xp');
     this.ui.toast(`Floor ${floor} cleared!`, 'good');
     this.ui.updatePlayer(this.player, this.score);
 
@@ -328,7 +338,7 @@ export class Game {
       this.sound.play('victory');
     }
 
-    await goldFlight;
+    await Promise.all([goldFlight, xpFlight]);
     if (!alive()) return;
 
     if (!(await this.tweens.wait(TIME.victoryBeat)) || !alive()) return;
@@ -383,6 +393,49 @@ export class Game {
 
     this.ui.goldHold = false;
     this.ui.setGoldDisplay(this.player.gold);
+  }
+
+  /**
+   * XP pickup: glowing motes drift out of the corpse into the XP bar,
+   * filling it as they land.
+   *
+   * @param {{x:number,y:number}} from world position of the kill
+   * @param {number} amount XP awarded
+   * @param {{level:number, xp:number, xpToNext:number}} before pre-reward state
+   * @param {boolean} levelled true if this reward crossed a level threshold
+   */
+  async collectXp(from, amount, before, levelled) {
+    const screen = this.ui.xpAnchor();
+    const to = screen
+      ? this.renderer.screenToWorld(screen.x, screen.y)
+      : { x: -120, y: -DESIGN.height / 2 + 20 };
+
+    // On a level-up the bar fills to the old threshold and the level-up
+    // screen takes over from there — trying to animate through the rollover
+    // mid-flight just reads as a glitch.
+    const ceiling = levelled ? before.xpToNext : before.xp + amount;
+    const climb = Math.max(0, ceiling - before.xp);
+    let credited = 0;
+
+    await this.effects.xpBurst(from, to, amount, {
+      onFirst: () => {
+        this.effects.damageNumber(to.x, to.y + 24, `${amount} XP`, {
+          kind: 'xp',
+          prefix: '+',
+        });
+      },
+      onCoin: (landed, total) => {
+        const share = Math.round((climb * landed) / total) - credited;
+        credited += share;
+        this.ui.setXpDisplay(before.level, before.xp + credited, before.xpToNext);
+        // Only at the ends — motes land ~20ms apart, and restarting the
+        // bump animation that often would freeze it on its first frame.
+        if (landed === 1 || landed === total) this.ui.pulseXp();
+      },
+    });
+
+    this.ui.xpHold = false;
+    this.ui.setXpDisplay(this.player.level, this.player.xp, this.player.xpToNext);
   }
 
   async presentLevelUp() {

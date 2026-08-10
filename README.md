@@ -19,6 +19,24 @@ npm run preview    # serve the built bundle
 npm test           # headless logic + balance checks (no browser needed)
 ```
 
+## Installable (PWA)
+
+The game installs to a home screen / desktop and runs offline. `public/`
+carries a `manifest.webmanifest`, generated 192/512/maskable icons and a
+service worker; the title screen shows an **Install app** button when the
+browser offers one.
+
+The service worker caches the shell on install and everything else on first
+use, rather than maintaining a precache list — the build output is
+content-hashed and the art is 500+ PNGs. Navigations are network-first (so a
+deploy is picked up) with the cached shell as the offline fallback; hashed
+assets are cache-first. Bump `CACHE` in [public/sw.js](public/sw.js) when the
+shell changes. It is only registered in production builds, so it never caches
+over your dev edits.
+
+Icons are generated from the game's own blue Warrior frame — regenerate them
+by re-running the script in the commit history if the unit art changes.
+
 ## Deploying
 
 Every push to `main` builds and publishes to GitHub Pages via
@@ -189,6 +207,10 @@ example, is CC-BY 4.0) require attribution.
 
 - Difficulty: the `scale*` functions and boss multipliers in `data/enemies.js`.
 - Feel: every duration lives in `TIME` in `core/config.js`.
+- HUD type: the `--fs-1`..`--fs-5` tokens at the top of `styles/main.css`. Each
+  is `max(floor, N * var(--u))` — text follows the board's scale but never
+  shrinks below a legible size, which matters because the board fills ~98% of
+  the width, so a 390px phone renders the design box at 0.78x.
 - Camera shake: every magnitude lives in `SHAKE` in `core/config.js`. Peaks are
   around 4–8 design units (under 2% of the board's width). Lower `SHAKE.scale`
   to soften all of it at once, or set it to `0` to turn shake off completely.
