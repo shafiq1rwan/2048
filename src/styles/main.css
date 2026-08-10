@@ -159,9 +159,20 @@ img {
   line-height: 1.15;
 }
 
+/* boss marker — the slot stays in the layout so the name keeps centre */
 .enemy-level {
   border-color: var(--red-dark);
   color: #ffd9c9;
+}
+
+.enemy-level.is-off {
+  visibility: hidden;
+}
+
+#hud-enemy.is-boss .enemy-level {
+  border-color: var(--gold-dark);
+  color: var(--gold);
+  animation: shake-warn 900ms ease-in-out infinite;
 }
 
 .enemy-name {
@@ -318,10 +329,29 @@ img {
   gap: calc(6 * var(--u));
 }
 
-.player-row {
+/* bars on the left, a labelled scoreboard column on the right */
+.player-grid {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: calc(10 * var(--u));
+}
+
+.player-bars {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: calc(6 * var(--u));
+}
+
+.player-meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: calc(6 * var(--u));
+  min-width: calc(98 * var(--u));
 }
 
 .stat {
@@ -346,20 +376,32 @@ img {
   min-width: 0;
 }
 
+/* both chips stretch to the column width; label left, number right */
 .stat-gold,
 .stat-score {
-  flex: none;
-  justify-content: flex-end;
-  min-width: calc(74 * var(--u));
+  justify-content: space-between;
   padding: calc(2 * var(--u)) calc(8 * var(--u));
   border-radius: calc(7 * var(--u));
   background: rgba(23, 26, 46, 0.72);
   border: calc(2 * var(--u)) solid var(--navy-600);
 }
 
+.stat-gold span,
+.stat-score span {
+  font-variant-numeric: tabular-nums;
+}
+
 .stat-gold span {
   color: var(--gold);
-  font-variant-numeric: tabular-nums;
+}
+
+/* small caps caption — the score is a number, not a weapon */
+.stat-cap {
+  font-style: normal;
+  font-size: var(--fs-1);
+  letter-spacing: calc(1.2 * var(--u));
+  text-transform: uppercase;
+  color: rgba(251, 236, 205, 0.62);
 }
 
 /* purse reacts as dropped coins land in it */

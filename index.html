@@ -46,30 +46,32 @@
         </header>
 
         <footer id="hud-player" class="hud">
-          <div class="player-row">
-            <div class="stat stat-hp">
-              <img class="icon" id="icon-hp" alt="" />
-              <div class="bar bar-php">
-                <div class="bar-fill" id="player-hp-fill"></div>
-                <span class="bar-label" id="player-hp-text">100 / 100</span>
+          <div class="player-grid">
+            <div class="player-bars">
+              <div class="stat stat-hp">
+                <img class="icon" id="icon-hp" alt="" />
+                <div class="bar bar-php">
+                  <div class="bar-fill" id="player-hp-fill"></div>
+                  <span class="bar-label" id="player-hp-text">100 / 100</span>
+                </div>
+              </div>
+              <div class="stat stat-xp">
+                <span class="lvl-chip" id="player-level">Lv 1</span>
+                <div class="bar bar-xp">
+                  <div class="bar-fill" id="player-xp-fill"></div>
+                  <span class="bar-label" id="player-xp-text">0 / 25 XP</span>
+                </div>
               </div>
             </div>
-            <div class="stat stat-gold">
-              <img class="icon" id="icon-gold" alt="" />
-              <span id="player-gold">0</span>
-            </div>
-          </div>
-          <div class="player-row">
-            <div class="stat stat-xp">
-              <span class="lvl-chip" id="player-level">Lv 1</span>
-              <div class="bar bar-xp">
-                <div class="bar-fill" id="player-xp-fill"></div>
-                <span class="bar-label" id="player-xp-text">0 / 25 XP</span>
+            <div class="player-meta">
+              <div class="stat stat-gold">
+                <img class="icon" id="icon-gold" alt="" />
+                <span id="player-gold">0</span>
               </div>
-            </div>
-            <div class="stat stat-score">
-              <img class="icon" id="icon-atk" alt="" />
-              <span id="player-score">0</span>
+              <div class="stat stat-score">
+                <i class="stat-cap">Score</i>
+                <span id="player-score">0</span>
+              </div>
             </div>
           </div>
           <div id="player-badges" class="badges"></div>

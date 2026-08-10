@@ -88,7 +88,6 @@ export class UIManager {
     };
     set($('icon-hp'), 'icon_meat');
     set($('icon-gold'), 'icon_gold');
-    set($('icon-atk'), 'icon_swords');
     set(this.el.soundIcon, 'icon_music');
   }
 
@@ -169,7 +168,11 @@ export class UIManager {
   setEnemy(enemy) {
     this.el.enemyName.textContent = enemy.name;
     this.el.enemyFloor.textContent = `Floor ${enemy.floor}`;
-    this.el.enemyLevel.textContent = enemy.isBoss ? 'BOSS' : `Lv ${enemy.level}`;
+    // The old "Lv N" chip always matched the floor number — pure noise.
+    // The slot is now a boss marker, kept in the layout (visibility) so
+    // the name stays centred between the two chips.
+    this.el.enemyLevel.textContent = 'BOSS';
+    this.el.enemyLevel.classList.toggle('is-off', !enemy.isBoss);
     this.el.hudEnemy.classList.toggle('is-boss', enemy.isBoss);
     this.el.enemyHpGhost.style.width = '0%';
     this.updateEnemyHp(enemy);
