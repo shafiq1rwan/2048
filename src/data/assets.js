@@ -83,7 +83,15 @@ export const IMAGES = {
   icon_meat_res: { path: 'Terrain/Resources/Meat/Meat Resource/Meat Resource.png', fallback: '#e2564b' },
 };
 
-/** Absolute-ish URL for an image key, safe for spaces/parentheses. */
+/**
+ * Vite substitutes the configured `base` here at build time, so the game
+ * works when served from a subpath (GitHub Pages project sites live at
+ * /<repo>/). Falls back to a relative path outside a Vite bundle.
+ */
+const BASE_URL = import.meta.env?.BASE_URL ?? './';
+
+/** URL for an image key, safe for the pack's spaces and parentheses. */
 export function assetUrl(path) {
-  return ASSET_ROOT + path.split('/').map(encodeURIComponent).join('/');
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  return `${BASE_URL}${BASE_URL.endsWith('/') ? '' : '/'}${ASSET_ROOT}${encoded}`;
 }

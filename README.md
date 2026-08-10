@@ -7,6 +7,8 @@ countdown gives you a few turns to line up a big merge before it hits back.
 Built with **Three.js** (orthographic, 2D textured planes) + **Vite**, plain
 ES modules, no framework. Art is the **Tiny Swords** pack, used as-is.
 
+**Play it:** https://shafiq1rwan.github.io/2048/
+
 ## Running
 
 ```bash
@@ -16,6 +18,20 @@ npm run build      # -> dist/
 npm run preview    # serve the built bundle
 npm test           # headless logic + balance checks (no browser needed)
 ```
+
+## Deploying
+
+Every push to `main` builds and publishes to GitHub Pages via
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml). The deploy is
+gated on `npm test`, so a broken merge rule or a malformed sprite descriptor
+fails the build instead of shipping.
+
+One-time setup: **Settings → Pages → Source → GitHub Actions**.
+
+`vite.config.js` uses `base: './'` and `data/assets.js` resolves paths against
+`import.meta.env.BASE_URL`, so the bundle is path-agnostic — it works at the
+domain root, under a `/<repo>/` project path, or opened from disk, with no
+repo name hardcoded anywhere.
 
 ## Controls
 
