@@ -1417,3 +1417,125 @@ img {
     font-size: 21px;
   }
 }
+
+/* ---------------------------------------------------------------- *
+ * Landscape phones (short + wide): stacked rows force the panel to
+ * scroll, but there is width to spare — so the three choices become
+ * side-by-side cards and the explainer rows go horizontal.
+ * ---------------------------------------------------------------- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .panel {
+    width: min(780px, 96vw);
+    padding: 12px 16px 12px;
+  }
+
+  .choices {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+  .choice {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    text-align: center;
+    gap: 6px;
+    padding: 10px 9px 9px;
+    position: relative;
+  }
+  /* keycap moves to the card corner so it doesn't push the column down */
+  .c-key {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+  }
+  /* price tag pins to the card foot so all three line up */
+  .choice .c-cost {
+    margin-top: auto;
+  }
+  .keyhint {
+    margin-top: 8px;
+  }
+
+  /* title screen */
+  .panel.is-title {
+    width: min(700px, 96vw);
+  }
+  .title-hero {
+    margin-bottom: 8px;
+  }
+  .title-main {
+    font-size: 30px;
+  }
+  .title-tag {
+    margin-top: 3px;
+    font-size: 12px;
+  }
+  .merge-demo {
+    margin-bottom: 9px;
+  }
+  /* the how-to rows below cover the mechanics */
+  .demo-caption {
+    display: none;
+  }
+  .how-to {
+    flex-direction: row;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .how-to li {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    text-align: center;
+    gap: 5px;
+    padding: 7px 8px;
+    font-size: 12.5px;
+  }
+  .records {
+    margin-bottom: 10px;
+  }
+  .rec {
+    min-width: 64px;
+    padding: 5px 9px;
+  }
+  .btn {
+    padding: 10px 20px;
+  }
+  .btn-hero {
+    font-size: 18px;
+    padding: 10px 24px;
+  }
+  /* Start and Install share one line instead of stacking */
+  .btn-row {
+    display: inline-flex;
+    vertical-align: middle;
+    margin: 0 4px;
+  }
+  #install-row {
+    margin-top: 0;
+  }
+  .panel .sub {
+    margin-bottom: 8px;
+  }
+
+  /* game over: fold the five stat rows into two columns */
+  .stats {
+    grid-template-columns: 1fr auto 1fr auto;
+    margin: 2px 0 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  .panel h1 {
+    font-size: 26px;
+    margin-bottom: 3px;
+  }
+  .score-big {
+    font-size: 38px;
+  }
+  .score-cap {
+    margin-bottom: 8px;
+  }
+}

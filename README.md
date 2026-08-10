@@ -51,6 +51,12 @@ One-time setup: **Settings → Pages → Source → GitHub Actions**.
 domain root, under a `/<repo>/` project path, or opened from disk, with no
 repo name hardcoded anywhere.
 
+The build also trims the art: `public/` carries the complete pack (517 PNGs)
+but the game references ~50 of them, so a plugin in `vite.config.js` drops the
+unreferenced files from `dist/` after the copy (about 4 MB saved). The keep
+list is read straight from `data/assets.js`, so adding an asset there is all
+it takes for it to ship.
+
 ## Controls
 
 | Input | Action |
