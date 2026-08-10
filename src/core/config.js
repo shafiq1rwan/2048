@@ -1,0 +1,99 @@
+/**
+ * Single source of truth for layout + timing.
+ *
+ * The world is measured in "design units". The orthographic camera is
+ * always scaled so that a DESIGN.width x DESIGN.height box is fully
+ * visible and centred; any leftover viewport shows extra scenery.
+ */
+
+export const DESIGN = {
+  width: 500,
+  height: 1000,
+};
+
+/**
+ * Vertical budget across the 1000-unit design box:
+ *   500 .. 382   top HUD (enemy name, HP, countdown)   118
+ *   382 ..  98   battlefield (horizon at 244, enemy at 226)
+ *    98 .. -390  board frame (488 tall)
+ *  -396 .. -500  bottom HUD (player HP, level, XP, gold)  104
+ */
+export const BOARD = {
+  size: 4,
+  cell: 108,
+  gap: 10,
+  /** World Y of the board's centre — keeps the frame clear of both HUDs. */
+  centerY: -146,
+  /** Padding between the outermost cells and the board frame. */
+  padding: 13,
+};
+
+/** Distance between the centres of two neighbouring cells. */
+export const CELL_PITCH = BOARD.cell + BOARD.gap; // 118
+/** Outer extent of the 4x4 grid of cells (not counting the frame). */
+export const GRID_EXTENT = BOARD.size * BOARD.cell + (BOARD.size - 1) * BOARD.gap; // 462
+
+export const SCENE = {
+  /** World Y where the grass surface begins. */
+  groundY: 244,
+  /** World Y of the enemy's feet. */
+  enemyFeetY: 226,
+  /** Rendered character height (design units) for a normal enemy. */
+  enemyHeight: 120,
+  /** Rendered character height for a boss. */
+  bossHeight: 160,
+  /** Rendered character height for a unit standing on a board tile. */
+  unitHeight: 68,
+};
+
+/** Animation timings in milliseconds — tuned to feel snappy, not slow. */
+export const TIME = {
+  tileSlide: 125,
+  tileSpawn: 150,
+  mergeSquash: 80,
+  mergeBounce: 130,
+  /**
+   * Delay between successive merges resolving in one move. The blocking
+   * path per merge is squash + projectile + impact + this, so it is kept
+   * short: a four-merge move should still finish inside ~1.4s.
+   */
+  mergeStagger: 40,
+  projectile: 150,
+  impact: 80,
+  enemyReact: 200,
+  enemyAttackWindup: 200,
+  enemyAttackStrike: 180,
+  enemyDeath: 520,
+  enemySpawn: 420,
+  bossSpawn: 700,
+  damageNumber: 800,
+  victoryBeat: 340,
+};
+
+/**
+ * World-space centre of a board cell. row 0 is the top row, col 0 is left.
+ * @returns {{x:number, y:number}}
+ */
+export function cellCenter(row, col) {
+  const half = (BOARD.size - 1) / 2;
+  return {
+    x: (col - half) * CELL_PITCH,
+    y: BOARD.centerY - (row - half) * CELL_PITCH,
+  };
+}
+
+export const RENDER_LAYER = {
+  sky: -60,
+  clouds: -50,
+  ground: -40,
+  decorBack: -30,
+  enemy: -10,
+  decorFront: -5,
+  boardFrame: 0,
+  boardCell: 1,
+  tile: 10,
+  tileUnit: 12,
+  tileLabel: 14,
+  effect: 40,
+  damage: 50,
+};

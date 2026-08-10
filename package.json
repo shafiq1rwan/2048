@@ -1,0 +1,20 @@
+{
+  "name": "merge-knights",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "2048 merge mechanics fused with light fantasy RPG combat, rendered with Three.js and Tiny Swords pixel art.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/run.js",
+    "probe": "node tools/probe-assets.mjs"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
