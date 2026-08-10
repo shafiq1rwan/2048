@@ -523,9 +523,15 @@ export class Game {
       this.sound.play('playerHit');
       this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
       this.effects.screenFlash({ color: '#ff4a3a', opacity: 0.32, duration: 300 });
-      this.effects.damageNumber(impact.x, impact.y, result.dealt, {
+      // The blow lands on the army: damage reads big over the middle of
+      // the board while the board itself jolts and the units go airborne.
+      this.effects.damageNumber(0, BOARD.centerY + 36, result.dealt, {
         kind: 'player',
         prefix: '-',
+        big: true,
+      });
+      this.boardView.hitReaction({
+        strength: Math.min(1.6, 0.85 + result.dealt / this.player.maxHp),
       });
       this.effects.sparks(impact.x, impact.y, {
         count: 12,
@@ -539,7 +545,9 @@ export class Game {
 
     this.ui.updatePlayer(this.player, this.score);
     this.ui.updateCountdown(enemy);
-    await this.tweens.wait(240);
+    // An unblocked hit holds a beat longer so the units land before the
+    // player's next move can start sliding them.
+    await this.tweens.wait(result.blocked ? 240 : TIME.tileLaunch);
   }
 
   // ------------------------------------------------------------------ //

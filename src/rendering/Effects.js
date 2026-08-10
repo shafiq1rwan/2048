@@ -313,7 +313,7 @@ export class Effects {
    * Floating damage number.
    * @param {'enemy'|'player'|'heal'|'gold'|'xp'} kind
    */
-  damageNumber(x, y, value, { kind = 'enemy', crit = false, prefix = '' } = {}) {
+  damageNumber(x, y, value, { kind = 'enemy', crit = false, prefix = '', big = false } = {}) {
     const styles = {
       enemy: { color: crit ? '#fff2a0' : '#ffffff', glow: crit ? '#ffb020' : null, size: crit ? 92 : 68 },
       player: { color: '#ff9a8a', glow: null, size: 66 },
@@ -321,7 +321,11 @@ export class Effects {
       gold: { color: '#ffd45e', glow: null, size: 58 },
       xp: { color: '#a8e6ff', glow: null, size: 56 },
     };
-    const style = styles[kind] ?? styles.enemy;
+    const style = { ...(styles[kind] ?? styles.enemy) };
+    if (big) {
+      style.size = Math.round(style.size * 1.9);
+      style.glow = style.glow ?? '#ff4030';
+    }
     const label = `${prefix}${value}`;
     const { texture, aspect } = textTexture(label, {
       fontSize: style.size,
@@ -347,11 +351,13 @@ export class Effects {
     this.root.add(mesh);
     this.transient.push(mesh);
 
-    const rise = kind === 'player' ? -54 : 108;
+    // Big numbers sit over the board, so they drift up out of the tiles
+    // instead of sinking into them, and hang around a little longer.
+    const rise = big ? 44 : kind === 'player' ? -54 : 108;
     const startY = mesh.position.y;
 
     this.tweens.add({
-      duration: TIME.damageNumber,
+      duration: big ? TIME.damageNumber * 1.25 : TIME.damageNumber,
       ease: Ease.linear,
       onUpdate: (v) => {
         // punchy scale-in, slow drift, late fade

@@ -73,6 +73,9 @@ export const TIME = {
   enemySpawn: 420,
   bossSpawn: 700,
   damageNumber: 800,
+  /** Board jolt + units thrown airborne when an enemy attack lands. */
+  boardJolt: 420,
+  tileLaunch: 400,
   victoryBeat: 200,
   /** Dropped coins tumble under gravity for this long before magnetising. */
   goldScatter: 300,
@@ -113,6 +116,8 @@ export const SHAKE = {
   bossDeath: 9,
   bossLand: 9,
   playerHit: 8.5,
+  /** Local jolt of the board group itself when the army takes a hit. */
+  boardHit: 9,
   blocked: 3,
   gameOver: 7,
 };

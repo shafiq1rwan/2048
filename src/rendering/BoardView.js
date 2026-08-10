@@ -9,7 +9,7 @@ import {
   starsTexture,
 } from './Textures.js';
 import { getUnit } from '../data/units.js';
-import { BOARD, GRID_EXTENT, SCENE, RENDER_LAYER, TIME, cellCenter } from '../core/config.js';
+import { BOARD, GRID_EXTENT, SCENE, RENDER_LAYER, TIME, SHAKE, cellCenter } from '../core/config.js';
 import { Ease } from '../core/Tween.js';
 
 /**
@@ -394,6 +394,66 @@ export class BoardView {
         this.root.position.y = offset[1] * push;
       },
       onComplete: () => this.root.position.set(0, 0, 0),
+    });
+  }
+
+  /**
+   * The enemy's blow lands on the army itself: the whole board jolts
+   * and every unit is thrown into the air, dropping back with a squash.
+   * Purely visual — cell positions and body scales end exactly at rest,
+   * and every tween resets in onCancel so a restart mid-hit is clean.
+   *
+   * @param {{strength?: number}} [opts] 1 = normal hit, scaled up for
+   *        heavier blows; affects jolt size and launch height
+   */
+  hitReaction({ strength = 1 } = {}) {
+    const jolt = SHAKE.boardHit * SHAKE.scale * strength;
+    this.tweens.add({
+      duration: TIME.boardJolt,
+      ease: Ease.linear,
+      onUpdate: (v) => {
+        // sharp kick that rings down: two axes at different rates so it
+        // reads as a jolt rather than a wobble on rails
+        const decay = (1 - v) * (1 - v);
+        this.root.position.y = -Math.sin(v * Math.PI * 3) * jolt * decay;
+        this.root.position.x = Math.sin(v * Math.PI * 5) * jolt * 0.45 * decay;
+      },
+      onComplete: () => this.root.position.set(0, 0, 0),
+      onCancel: () => this.root.position.set(0, 0, 0),
+    });
+
+    for (const view of this.views.values()) {
+      // Staggered per tile so the board ripples instead of hopping as
+      // one rigid slab.
+      this.tweens.after(Math.random() * 70, () => this.launchTile(view, strength));
+    }
+  }
+
+  /** One unit thrown airborne, landing back on its plate with a squash. */
+  launchTile(view, strength = 1) {
+    const height = (16 + Math.random() * 14) * strength;
+    const settle = () => {
+      view.body.position.y = 0;
+      view.setSquash(1, 1);
+    };
+    this.tweens.add({
+      duration: TIME.tileLaunch,
+      ease: Ease.linear,
+      onUpdate: (v) => {
+        if (v < 0.72) {
+          // ballistic arc, stretched a touch while airborne
+          const arc = Math.sin((v / 0.72) * Math.PI);
+          view.body.position.y = arc * height;
+          view.setSquash(1 - 0.06 * arc, 1 + 0.08 * arc);
+        } else {
+          // landing squash that springs back to rest
+          const t = Ease.outBack((v - 0.72) / 0.28);
+          view.body.position.y = 0;
+          view.setSquash(1.14 - 0.14 * t, 0.84 + 0.16 * t);
+        }
+      },
+      onComplete: settle,
+      onCancel: settle,
     });
   }
 
