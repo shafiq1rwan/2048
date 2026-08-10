@@ -23,7 +23,7 @@ const SWIPE_TIMEOUT = 900;
 export class InputManager {
   /**
    * @param {{onMove:(dir:string)=>void, onConfirm?:()=>void,
-   *          onFirstInteraction?:()=>void}} handlers
+   *          onPause?:()=>void, onFirstInteraction?:()=>void}} handlers
    */
   constructor(handlers) {
     this.handlers = handlers;
@@ -73,6 +73,14 @@ export class InputManager {
     if (event.code === 'Enter' || event.code === 'Space') {
       event.preventDefault();
       this.handlers.onConfirm?.();
+      return;
+    }
+
+    // Pause is deliberately not gated on `locked` — the pause handler
+    // decides for itself what game states it may act in.
+    if (event.code === 'Escape' || event.code === 'KeyP') {
+      event.preventDefault();
+      this.handlers.onPause?.();
     }
   }
 

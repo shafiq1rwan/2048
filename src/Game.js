@@ -67,12 +67,14 @@ export class Game {
     this.input = new InputManager({
       onMove: (dir) => this.handleMove(dir),
       onConfirm: () => this.ui.confirmModal(),
+      onPause: () => this.handlePauseRequest(),
       onFirstInteraction: () => {
         this.sound.unlock();
         this.sound.setMuted(this.save.get('muted'));
       },
     });
     this.input.lock();
+    this.ui.onPauseRequest = () => this.handlePauseRequest();
 
     this.lastTime = performance.now();
     this._loop = this.loop.bind(this);
@@ -166,6 +168,38 @@ export class Game {
       this.state = 'idle';
       this.input.unlock();
     });
+  }
+
+  /** Pause button / Escape: toggles — a second press resumes. */
+  handlePauseRequest() {
+    if (this.state === 'paused') {
+      this.ui.confirmModal(); // clicks Resume
+      return;
+    }
+    this.pause().catch((err) => console.error('[Game] pause failed:', err));
+  }
+
+  /**
+   * Open the pause menu. Only from idle — mid-animation state stays
+   * owned by whatever sequence is running, and modals pause implicitly.
+   */
+  async pause() {
+    if (this.state !== 'idle') return;
+    this.state = 'paused';
+    this.input.lock();
+
+    const choice = await this.ui.showPause();
+    if (choice === 'restart') {
+      this.sound.play('start');
+      await this.startRun();
+      return;
+    }
+    if (choice === 'title') {
+      await this.showTitle();
+      return;
+    }
+    this.state = 'idle';
+    this.input.unlock();
   }
 
   /**

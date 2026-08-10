@@ -2,6 +2,7 @@ import { getUnit } from '../data/units.js';
 import { BOSS_EVERY } from '../data/enemies.js';
 import { ICON_ZOOM } from '../data/assets.js';
 import { INTENT_DAMAGE } from '../combat/CombatSystem.js';
+import { ribbonDataUrl, RIBBON_ROW } from './PackArt.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -36,7 +37,6 @@ export class UIManager {
       hudEnemy: $('hud-enemy'),
       enemyFloor: $('enemy-floor'),
       enemyName: $('enemy-name'),
-      enemyLevel: $('enemy-level'),
       enemyHpBar: $('enemy-hp-bar'),
       enemyHpFill: $('enemy-hp-fill'),
       enemyHpGhost: $('enemy-hp-ghost'),
@@ -56,12 +56,14 @@ export class UIManager {
       toasts: $('toasts'),
       hint: $('hint'),
       overlay: $('overlay'),
-      soundBtn: $('btn-sound'),
-      soundIcon: $('icon-sound'),
+      pauseBtn: $('btn-pause'),
       loading: $('loading'),
       loadingFill: $('loading-fill'),
       loadingText: $('loading-text'),
     };
+
+    /** Set by Game — fired by the pause button (and the Escape key). */
+    this.onPauseRequest = null;
 
     /** Resolver for whatever modal is currently open. */
     this.pendingResolve = null;
@@ -78,7 +80,8 @@ export class UIManager {
     this.xpHold = false;
 
     this.bindIcons();
-    this.bindSoundButton();
+    this.installPackUi();
+    this.bindPauseButton();
     this.bindModalKeys();
   }
 
@@ -88,22 +91,30 @@ export class UIManager {
     };
     set($('icon-hp'), 'icon_meat');
     set($('icon-gold'), 'icon_gold');
-    set(this.el.soundIcon, 'icon_music');
   }
 
-  bindSoundButton() {
-    const btn = this.el.soundBtn;
-    if (!btn) return;
-    const sync = () => btn.classList.toggle('is-muted', this.save.get('muted'));
-    sync();
-    btn.addEventListener('click', () => {
-      const muted = !this.save.get('muted');
-      this.save.set('muted', muted);
-      this.sound.unlock();
-      this.sound.setMuted(muted);
-      if (!muted) this.sound.play('buy');
-      sync();
-    });
+  /**
+   * Skin the DOM chrome with the pack's UI Elements art — currently the
+   * round button faces for the pause control. (The big 9-slice button
+   * faces were tried and rejected: Chromium ignores image-rendering on
+   * border-image scaling, which smears their pixel rims at UI sizes.)
+   * Falls back to the flat CSS look when the art is missing.
+   */
+  installPackUi() {
+    const root = this.el.root.style;
+    // Single contiguous images — usable straight from their URLs.
+    // Absolutised against the page: a relative url() inside a CSS var
+    // would resolve against the stylesheet's folder instead.
+    if (!this.assets.missing.has('ui_btn_round')) {
+      const abs = (key) => new URL(this.assets.url(key), document.baseURI).href;
+      root.setProperty('--btn-round', `url("${abs('ui_btn_round')}")`);
+      root.setProperty('--btn-round-pressed', `url("${abs('ui_btn_round_pressed')}")`);
+      document.body.classList.add('pack-round');
+    }
+  }
+
+  bindPauseButton() {
+    this.el.pauseBtn?.addEventListener('click', () => this.onPauseRequest?.());
   }
 
   /** 1/2/3 pick a modal choice; Enter/Space triggers the primary action. */
@@ -168,15 +179,34 @@ export class UIManager {
   setEnemy(enemy) {
     this.el.enemyName.textContent = enemy.name;
     this.el.enemyFloor.textContent = `Floor ${enemy.floor}`;
-    // The old "Lv N" chip always matched the floor number — pure noise.
-    // The slot is now a boss marker, kept in the layout (visibility) so
-    // the name stays centred between the two chips.
-    this.el.enemyLevel.textContent = 'BOSS';
-    this.el.enemyLevel.classList.toggle('is-off', !enemy.isBoss);
+    // Bosses are marked by the ribbon itself: red cloth + the gold
+    // glowing name. The floor chip rides with the countdown, so the
+    // whole title row belongs to the name.
     this.el.hudEnemy.classList.toggle('is-boss', enemy.isBoss);
+    this.paintNameRibbon(enemy.isBoss);
     this.el.enemyHpGhost.style.width = '0%';
     this.updateEnemyHp(enemy);
     this.updateCountdown(enemy);
+  }
+
+  /**
+   * Paint a pack ribbon behind the enemy's name so it stays readable
+   * over the moving clouds — navy normally, red for bosses. Composed at
+   * the plate's measured size (x2 for crispness) on every enemy change.
+   */
+  paintNameRibbon(isBoss) {
+    const nameEl = this.el.enemyName;
+    if (this.assets.missing.has('ui_ribbons')) return;
+    nameEl.classList.add('has-ribbon');
+    // reflow so the padding from .has-ribbon is in the measurement
+    const width = Math.max(1, Math.ceil(nameEl.offsetWidth));
+    const height = Math.max(1, Math.ceil(nameEl.offsetHeight));
+    const url = ribbonDataUrl(this.assets.get('ui_ribbons').image, {
+      row: isBoss ? RIBBON_ROW.red : RIBBON_ROW.navy,
+      width: width * 2,
+      height: height * 2,
+    });
+    nameEl.style.backgroundImage = `url("${url}")`;
   }
 
   /** @param {import('../combat/Enemy.js').Enemy} enemy */
@@ -687,6 +717,56 @@ export class UIManager {
   }
 
   /**
+   * Pause menu: resume, sound toggle, restart, quit. The sound toggle
+   * lives here now instead of a permanent corner button.
+   * @returns {Promise<'resume'|'restart'|'title'>}
+   */
+  showPause() {
+    const soundLabel = () =>
+      `&#9835; Sound: <b>${this.save.get('muted') ? 'Off' : 'On'}</b>`;
+
+    const panel = this.openPanel(
+      `
+      ${this.panelHeader({
+        icon: 'icon_swords',
+        title: 'Paused',
+        sub: 'The enemy waits for your move',
+      })}
+      <div class="pause-menu">
+        <button class="btn" id="btn-resume">&#9654; Resume</button>
+        <button class="btn ghost" id="btn-sound-toggle">${soundLabel()}</button>
+        <button class="btn danger" id="btn-restart">&#8635; Restart Run</button>
+        <button class="btn ghost" id="btn-quit">Title Screen</button>
+      </div>
+      <p class="keyhint">Esc or Enter to resume</p>
+    `,
+      'is-pause',
+    );
+
+    return new Promise((resolve) => {
+      const done = (choice) => {
+        this.closePanel();
+        resolve(choice);
+      };
+      panel.querySelector('#btn-resume').addEventListener('click', () => done('resume'));
+      panel.querySelector('#btn-restart').addEventListener('click', () => done('restart'));
+      panel.querySelector('#btn-quit').addEventListener('click', () => done('title'));
+
+      const soundBtn = panel.querySelector('#btn-sound-toggle');
+      soundBtn.addEventListener('click', () => {
+        const muted = !this.save.get('muted');
+        this.save.set('muted', muted);
+        this.sound.unlock();
+        this.sound.setMuted(muted);
+        if (!muted) this.sound.play('buy');
+        soundBtn.innerHTML = soundLabel();
+      });
+
+      panel.querySelector('#btn-resume').focus();
+    });
+  }
+
+  /**
    * @param {{score:number, floor:number, enemies:number, bosses:number,
    *          highestUnit:number, gold:number, reason:string,
    *          record:{newRecord:boolean, previousBest:number}}} summary
@@ -745,6 +825,7 @@ export class UIManager {
   confirmModal() {
     if (!this.modalOpen) return false;
     const primary =
+      this.el.overlay.querySelector('#btn-resume') ??
       this.el.overlay.querySelector('#btn-again') ??
       this.el.overlay.querySelector('#btn-start') ??
       this.el.overlay.querySelector('#btn-continue');

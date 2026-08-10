@@ -133,8 +133,12 @@ img {
   top: 0;
   height: max(104px, calc(118 * var(--u)));
   justify-content: flex-start;
-  /* clear the status bar / notch when installed as a PWA */
-  padding-top: max(calc(10 * var(--u)), env(safe-area-inset-top, 0px));
+  /* pushed down a little so the name doesn't fight the moving clouds,
+     and clear of the status bar / notch when installed as a PWA */
+  padding-top: max(calc(22 * var(--u)), env(safe-area-inset-top, 0px));
+  /* side clearance for the pause button pinned to the stage's corner */
+  padding-left: calc(58 * var(--u));
+  padding-right: calc(58 * var(--u));
 }
 
 .enemy-titlerow {
@@ -145,7 +149,6 @@ img {
 }
 
 .floor-chip,
-.enemy-level,
 .lvl-chip {
   flex: none;
   font-size: var(--fs-3);
@@ -159,20 +162,10 @@ img {
   line-height: 1.15;
 }
 
-/* boss marker — the slot stays in the layout so the name keeps centre */
-.enemy-level {
-  border-color: var(--red-dark);
-  color: #ffd9c9;
-}
-
-.enemy-level.is-off {
-  visibility: hidden;
-}
-
-#hud-enemy.is-boss .enemy-level {
+/* the floor chip turns gold alongside the boss's red ribbon */
+#hud-enemy.is-boss .floor-chip {
   border-color: var(--gold-dark);
   color: var(--gold);
-  animation: shake-warn 900ms ease-in-out infinite;
 }
 
 .enemy-name {
@@ -184,6 +177,17 @@ img {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* pack ribbon painted behind the name (see UIManager.paintNameRibbon);
+   negative margin keeps the title row's height unchanged */
+.enemy-name.has-ribbon {
+  padding: calc(6 * var(--u)) calc(30 * var(--u));
+  margin: calc(-4 * var(--u)) 0;
+  max-width: 100%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 #hud-enemy.is-boss .enemy-name {
@@ -261,10 +265,12 @@ img {
   letter-spacing: calc(0.4 * var(--u));
 }
 
-/* --- countdown -------------------------------------------------- */
+/* --- countdown (shares its row with the floor chip) -------------- */
 .countdown {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: calc(8 * var(--u));
 }
 
 .countdown-text {
@@ -1238,12 +1244,27 @@ img {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.42);
 }
 
-.btn.red {
+.btn.red,
+.btn.danger {
   background: linear-gradient(180deg, #f08277 0%, #d1483f 60%, #92302a 100%);
 }
 
 .btn.ghost {
   background: linear-gradient(180deg, #4d557f 0%, #343b60 100%);
+}
+
+/* --- pause menu -------------------------------------------------- */
+.pause-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
+  width: min(300px, 100%);
+  margin: 2px auto 4px;
+}
+
+.panel.is-pause {
+  border-color: #4c5a8c;
 }
 
 /* --- stats table (game over) ----------------------------------- */
@@ -1330,18 +1351,20 @@ img {
 }
 
 /* ---------------------------------------------------------------- *
- * Corner sound button + loader
+ * Corner pause button + loader
  * ---------------------------------------------------------------- */
 .corner-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 42px;
-  height: 42px;
+  top: max(8px, env(safe-area-inset-top, 0px));
+  /* pinned to the stage's right edge, not the viewport's, so it sits
+     with the HUD on wide desktop windows too */
+  left: calc(var(--stage-x) + var(--stage-w) - 54px);
+  width: 46px;
+  height: 46px;
   z-index: 30;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 50%;
   border: 3px solid var(--navy-600);
   background: rgba(23, 26, 46, 0.82);
   cursor: pointer;
@@ -1353,14 +1376,36 @@ img {
   transform: translateY(-1px);
 }
 
-.corner-btn img {
-  width: 24px;
-  height: 24px;
+/* skinned with the pack's round button when its art is available */
+body.pack-round .corner-btn {
+  border: none;
+  background: transparent center / 100% 100% no-repeat;
+  background-image: var(--btn-round);
+  image-rendering: pixelated;
 }
 
-.corner-btn.is-muted img {
-  opacity: 0.4;
-  filter: grayscale(1);
+body.pack-round .corner-btn:active {
+  background-image: var(--btn-round-pressed);
+  transform: translateY(1px);
+}
+
+.pause-glyph {
+  width: 13px;
+  height: 15px;
+  border-left: 4px solid #fff;
+  border-right: 4px solid #fff;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.45));
+  /* the round face sits a touch high in its frame */
+  margin-top: -3px;
+}
+
+.corner-btn:active .pause-glyph {
+  transform: translateY(2px);
+}
+
+/* no pausing on the title screen */
+#overlay.is-fullscreen:not(.hidden) ~ .corner-btn {
+  display: none;
 }
 
 .loading {

@@ -70,6 +70,17 @@ export const IMAGES = {
   tower: { path: 'Factions/Knights/Buildings/Tower/Tower_Blue.png', fallback: '#5878b0' },
   house: { path: 'Factions/Knights/Buildings/House/House_Blue.png', fallback: '#8a5f3c' },
 
+  // ---- UI Elements: chrome (ribbons + the pause button) -----------
+  ui_ribbons: { path: 'UI Elements/UI Elements/Ribbons/BigRibbons.png', fallback: '#2f3556' },
+  ui_btn_round: {
+    path: 'UI Elements/UI Elements/Buttons/SmallBlueRoundButton_Regular.png',
+    fallback: '#3d8fae',
+  },
+  ui_btn_round_pressed: {
+    path: 'UI Elements/UI Elements/Buttons/SmallBlueRoundButton_Pressed.png',
+    fallback: '#2b6a83',
+  },
+
   // ---- UI icons (single 64x64 images) ----------------------------
   icon_gold: { path: 'UI Elements/UI Elements/Icons/Icon_03.png', fallback: '#f5c542' },
   icon_meat: { path: 'UI Elements/UI Elements/Icons/Icon_04.png', fallback: '#e2564b' },

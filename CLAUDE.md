@@ -28,6 +28,11 @@ Deploy: push to `main` → GitHub Actions builds and publishes to GitHub Pages
 - **`src/data/assets.js`** is the only file that knows an image path. Do not
   scatter paths. A missing file falls back to a colored placeholder and logs —
   the game must always run.
+- **`src/ui/PackArt.js`** composites the pack's "UI Elements" slice sheets
+  (measured rects; transparent gutters make the raw files unusable as CSS
+  backgrounds) into data URLs — e.g. the enemy-name ribbon. Note: border-image
+  scaling ignores `image-rendering` in Chromium, so 9-slice button skins smear;
+  don't retry that without a per-size canvas composition.
 - **`src/core/config.js`** holds every tuning number: the design box, board
   metrics, all animation durations (`TIME`), all shake magnitudes (`SHAKE`),
   render layering (`RENDER_LAYER`). Difficulty curves live in

@@ -31,9 +31,7 @@
       <div id="stage" class="pre-game">
         <header id="hud-enemy" class="hud">
           <div class="enemy-titlerow">
-            <span id="enemy-floor" class="floor-chip">Floor 1</span>
             <span id="enemy-name" class="enemy-name">Enemy</span>
-            <span id="enemy-level" class="enemy-level">Lv 1</span>
           </div>
           <div class="bar bar-hp" id="enemy-hp-bar">
             <div class="bar-fill" id="enemy-hp-fill"></div>
@@ -41,6 +39,7 @@
             <span class="bar-label" id="enemy-hp-text">30 / 30</span>
           </div>
           <div id="enemy-countdown" class="countdown">
+            <span id="enemy-floor" class="floor-chip">Floor 1</span>
             <span class="countdown-text">Enemy attacks in <b>3</b> turns</span>
           </div>
         </header>
@@ -83,8 +82,8 @@
 
       <div id="overlay" class="overlay hidden" aria-live="polite"></div>
 
-      <button id="btn-sound" class="corner-btn" title="Toggle sound" aria-label="Toggle sound">
-        <img id="icon-sound" alt="" />
+      <button id="btn-pause" class="corner-btn" title="Pause" aria-label="Pause">
+        <span class="pause-glyph"></span>
       </button>
 
       <div id="loading" class="loading">
