@@ -70,8 +70,9 @@ export const IMAGES = {
   tower: { path: 'Factions/Knights/Buildings/Tower/Tower_Blue.png', fallback: '#5878b0' },
   house: { path: 'Factions/Knights/Buildings/House/House_Blue.png', fallback: '#8a5f3c' },
 
-  // ---- UI Elements: chrome (ribbons + the pause button) -----------
+  // ---- UI Elements: chrome (ribbons, paper panels, pause button) ---
   ui_ribbons: { path: 'UI Elements/UI Elements/Ribbons/BigRibbons.png', fallback: '#2f3556' },
+  ui_paper: { path: 'UI Elements/UI Elements/Papers/SpecialPaper.png', fallback: '#3a4160' },
   ui_btn_round: {
     path: 'UI Elements/UI Elements/Buttons/SmallBlueRoundButton_Regular.png',
     fallback: '#3d8fae',

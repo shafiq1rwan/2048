@@ -179,15 +179,21 @@ img {
   text-overflow: ellipsis;
 }
 
-/* pack ribbon painted behind the name (see UIManager.paintNameRibbon);
-   negative margin keeps the title row's height unchanged */
-.enemy-name.has-ribbon {
-  padding: calc(6 * var(--u)) calc(30 * var(--u));
-  margin: calc(-4 * var(--u)) 0;
-  max-width: 100%;
+/* composed pack art painted at the element's exact size (PackArt.js);
+   side padding on ribbons is set by JS to clear the folded tails */
+.has-ribbon,
+.pack-paper {
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;
+}
+
+/* negative margin keeps the title row's height unchanged */
+.enemy-name.has-ribbon {
+  padding-top: calc(6 * var(--u));
+  padding-bottom: calc(6 * var(--u));
+  margin: calc(-4 * var(--u)) 0;
+  max-width: 100%;
 }
 
 #hud-enemy.is-boss .enemy-name {
@@ -827,6 +833,17 @@ img {
   animation: title-glow 3.4s ease-in-out infinite;
 }
 
+/* on its ribbon the hero shrinks a step so text + tails fit the column */
+.panel.is-title .title-main.has-ribbon {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding-top: 0.22em;
+  padding-bottom: 0.26em;
+  font-size: clamp(28px, 7.6vw, 46px);
+  white-space: nowrap;
+}
+
 @keyframes title-glow {
   0%,
   100% {
@@ -859,6 +876,23 @@ img {
   border-radius: 14px;
   background: rgba(12, 14, 26, 0.38);
   border: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+/* pack paper replaces the flat card/list chrome when available */
+.title-card.pack-paper {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 16px 16px 4px;
+}
+
+.how-to.pack-paper {
+  padding: 12px 13px;
+}
+
+.how-to.pack-paper li {
+  background: rgba(12, 14, 26, 0.32);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .title-actions {
@@ -1267,6 +1301,16 @@ img {
   border-color: #4c5a8c;
 }
 
+/* the pause dialog on the pack's slate paper */
+.panel.is-pause.pack-paper {
+  background-color: transparent;
+  background-image: none; /* the composed art lands inline */
+  border: none;
+  border-radius: 0;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+  padding: 28px 26px 24px;
+}
+
 /* --- stats table (game over) ----------------------------------- */
 .stats {
   display: grid;
@@ -1654,20 +1698,30 @@ body.pack-round .corner-btn:active {
   .panel.is-title .title-main {
     font-size: 34px;
   }
+  .panel.is-title .title-main.has-ribbon {
+    font-size: 29px;
+  }
   .title-tag {
     margin-top: 5px;
     font-size: 12px;
     letter-spacing: 3px;
   }
-  .title-card {
-    padding: 9px 10px 1px;
+  .title-card,
+  .title-card.pack-paper {
+    padding: 9px 12px 0;
+  }
+  .how-to.pack-paper {
+    padding: 8px 10px;
   }
   .demo-caption {
     margin-bottom: 9px;
     font-size: 13px;
   }
+  .how-to {
+    gap: 6px;
+  }
   .how-to li {
-    padding: 6px 10px;
+    padding: 5px 9px;
     font-size: 13px;
   }
   .rec {

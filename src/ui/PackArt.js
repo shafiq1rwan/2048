@@ -25,6 +25,13 @@ const RIBBON = {
 export const RIBBON_ROW = { teal: 0, red: 1, yellow: 2, purple: 3, navy: 4 };
 
 /**
+ * For layout: the folded tails scale with the plate's height, so text
+ * needs side padding of roughly `height * tailW / h` to stay on the
+ * flat cloth between them.
+ */
+export const RIBBON_METRICS = { h: RIBBON.h, tailW: Math.max(RIBBON.left.w, RIBBON.right.w) };
+
+/**
  * Compose one ribbon row into a banner image of the requested size.
  * @param {CanvasImageSource} image the BigRibbons sheet
  */
@@ -57,6 +64,65 @@ export function ribbonDataUrl(image, { row = RIBBON_ROW.navy, width = 360, heigh
     rw,
     canvas.height,
   );
+  return canvas.toDataURL();
+}
+
+/**
+ * Papers/SpecialPaper.png — 320x320, a dark slate panel with gold
+ * filigree corners, stored as nine blocks with gutters.
+ */
+const PAPER = {
+  cols: [
+    { x: 9, w: 55 },
+    { x: 128, w: 64 },
+    { x: 256, w: 55 },
+  ],
+  rows: [
+    { y: 20, h: 44 },
+    { y: 128, h: 64 },
+    { y: 256, h: 43 },
+  ],
+};
+
+/**
+ * Compose the paper panel at an exact pixel size. Done per element
+ * (instead of CSS border-image) because Chromium ignores
+ * image-rendering when scaling border-image, which smears the art.
+ *
+ * @param {CanvasImageSource} image the SpecialPaper sheet
+ * @param {{width:number, height:number, edge?:number, ratio?:number}} opts
+ *        width/height in CSS px; edge = rendered corner width in CSS px;
+ *        ratio = supersampling factor for crispness
+ */
+export function paperDataUrl(image, { width, height, edge = 20, ratio = 2 } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(8, Math.round(width * ratio));
+  canvas.height = Math.max(8, Math.round(height * ratio));
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const s = (edge / PAPER.cols[0].w) * ratio;
+  const xs = [0, Math.round(PAPER.cols[0].w * s), canvas.width - Math.round(PAPER.cols[2].w * s)];
+  const ys = [0, Math.round(PAPER.rows[0].h * s), canvas.height - Math.round(PAPER.rows[2].h * s)];
+  const ws = [xs[1], xs[2] - xs[1], canvas.width - xs[2]];
+  const hs = [ys[1], ys[2] - ys[1], canvas.height - ys[2]];
+
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (ws[c] <= 0 || hs[r] <= 0) continue;
+      ctx.drawImage(
+        image,
+        PAPER.cols[c].x,
+        PAPER.rows[r].y,
+        PAPER.cols[c].w,
+        PAPER.rows[r].h,
+        xs[c],
+        ys[r],
+        ws[c],
+        hs[r],
+      );
+    }
+  }
   return canvas.toDataURL();
 }
 

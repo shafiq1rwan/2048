@@ -2,7 +2,7 @@ import { getUnit } from '../data/units.js';
 import { BOSS_EVERY } from '../data/enemies.js';
 import { ICON_ZOOM } from '../data/assets.js';
 import { INTENT_DAMAGE } from '../combat/CombatSystem.js';
-import { ribbonDataUrl, RIBBON_ROW } from './PackArt.js';
+import { ribbonDataUrl, paperDataUrl, RIBBON_ROW, RIBBON_METRICS } from './PackArt.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,10 +79,30 @@ export class UIManager {
     /** Same idea for the XP bar while its motes are in flight. */
     this.xpHold = false;
 
+    /**
+     * Elements dressed in composed pack art, keyed by element with the
+     * function that repaints them — re-run on resize since the art is
+     * composed at the element's exact pixel size.
+     */
+    this.skinned = new Map();
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this.reskin(), 160);
+    });
+
     this.bindIcons();
     this.installPackUi();
     this.bindPauseButton();
     this.bindModalKeys();
+  }
+
+  /** Repaint every still-connected skinned element at its new size. */
+  reskin() {
+    for (const [el, paint] of this.skinned) {
+      if (el.isConnected) paint();
+      else this.skinned.delete(el);
+    }
   }
 
   bindIcons() {
@@ -190,23 +210,53 @@ export class UIManager {
   }
 
   /**
-   * Paint a pack ribbon behind the enemy's name so it stays readable
-   * over the moving clouds — navy normally, red for bosses. Composed at
-   * the plate's measured size (x2 for crispness) on every enemy change.
+   * Dress an element in a pack ribbon, composed at its exact size.
+   *
+   * The folded tails scale with the plate's height, so the side padding
+   * is computed from the measured tail width — a fixed padding lets the
+   * text ride up onto the folds.
    */
-  paintNameRibbon(isBoss) {
-    const nameEl = this.el.enemyName;
+  paintRibbon(el, row) {
     if (this.assets.missing.has('ui_ribbons')) return;
-    nameEl.classList.add('has-ribbon');
-    // reflow so the padding from .has-ribbon is in the measurement
-    const width = Math.max(1, Math.ceil(nameEl.offsetWidth));
-    const height = Math.max(1, Math.ceil(nameEl.offsetHeight));
+    el.classList.add('has-ribbon');
+
+    el.style.paddingLeft = '0px';
+    el.style.paddingRight = '0px';
+    const height = Math.max(1, Math.ceil(el.offsetHeight));
+    const tail = Math.ceil((height / RIBBON_METRICS.h) * RIBBON_METRICS.tailW) + Math.max(4, Math.round(height * 0.1));
+    el.style.paddingLeft = `${tail}px`;
+    el.style.paddingRight = `${tail}px`;
+
+    const width = Math.max(1, Math.ceil(el.offsetWidth));
     const url = ribbonDataUrl(this.assets.get('ui_ribbons').image, {
-      row: isBoss ? RIBBON_ROW.red : RIBBON_ROW.navy,
+      row,
       width: width * 2,
       height: height * 2,
     });
-    nameEl.style.backgroundImage = `url("${url}")`;
+    el.style.backgroundImage = `url("${url}")`;
+    this.skinned.set(el, () => this.paintRibbon(el, row));
+  }
+
+  /** Navy cloth normally, red for bosses. */
+  paintNameRibbon(isBoss) {
+    this.paintRibbon(this.el.enemyName, isBoss ? RIBBON_ROW.red : RIBBON_ROW.navy);
+  }
+
+  /**
+   * Dress an element in the pack's slate paper panel (gold filigree
+   * corners), composed at its exact size.
+   */
+  skinPaper(el, { edge = 20 } = {}) {
+    if (this.assets.missing.has('ui_paper')) return;
+    el.classList.add('pack-paper');
+    const width = Math.max(1, Math.ceil(el.offsetWidth));
+    const height = Math.max(1, Math.ceil(el.offsetHeight));
+    el.style.backgroundImage = `url("${paperDataUrl(this.assets.get('ui_paper').image, {
+      width,
+      height,
+      edge,
+    })}")`;
+    this.skinned.set(el, () => this.skinPaper(el, { edge }));
   }
 
   /** @param {import('../combat/Enemy.js').Enemy} enemy */
@@ -564,6 +614,11 @@ export class UIManager {
       'is-title',
       { fullscreen: true },
     );
+    // Pack chrome: the hero title on a red ribbon (like a boss plate),
+    // the explainer cards on slate paper.
+    this.paintRibbon(panel.querySelector('.title-main'), RIBBON_ROW.red);
+    this.skinPaper(panel.querySelector('.title-card'), { edge: 17 });
+    this.skinPaper(panel.querySelector('.how-to'), { edge: 17 });
 
     return new Promise((resolve) => {
       const start = panel.querySelector('#btn-start');
@@ -742,6 +797,7 @@ export class UIManager {
     `,
       'is-pause',
     );
+    this.skinPaper(panel, { edge: 22 });
 
     return new Promise((resolve) => {
       const done = (choice) => {
