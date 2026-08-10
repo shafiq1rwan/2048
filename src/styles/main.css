@@ -271,6 +271,18 @@ img {
   font-size: max(16px, calc(19 * var(--u)));
 }
 
+.cd-icon {
+  display: inline-block;
+  margin-right: calc(2 * var(--u));
+}
+
+/* board sabotage (bomb / freeze) reads differently from plain damage */
+.countdown.is-sabotage .countdown-text {
+  border-color: #7a5ac0;
+  background: rgba(52, 34, 88, 0.85);
+  color: #e6d8ff;
+}
+
 .countdown.is-imminent .countdown-text {
   border-color: var(--red);
   background: rgba(120, 26, 26, 0.85);

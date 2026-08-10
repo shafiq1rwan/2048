@@ -1,6 +1,7 @@
 import { getUnit } from '../data/units.js';
 import { BOSS_EVERY } from '../data/enemies.js';
 import { ICON_ZOOM } from '../data/assets.js';
+import { INTENT_DAMAGE } from '../combat/CombatSystem.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -198,13 +199,31 @@ export class UIManager {
     }
   }
 
-  /** @param {import('../combat/Enemy.js').Enemy} enemy */
+  /**
+   * The countdown chip doubles as the enemy's telegraph: it names what
+   * the next swing will actually do, so waiting it out is a choice.
+   * @param {import('../combat/Enemy.js').Enemy} enemy
+   */
   updateCountdown(enemy) {
     if (!enemy) return;
     const turns = enemy.countdown;
-    const label = turns <= 0 ? 'Enemy is <b>attacking!</b>' : `Enemy attacks in <b>${turns}</b> ${turns === 1 ? 'turn' : 'turns'}`;
+    const intents = {
+      strike: { icon: '&#9876;', text: `~${enemy.attack} dmg`, sabotage: false },
+      bomb: {
+        icon: '&#128163;',
+        text: `Bomb ~${Math.max(1, Math.round(enemy.attack * INTENT_DAMAGE.bomb))}`,
+        sabotage: true,
+      },
+      freeze: { icon: '&#10052;', text: 'Freeze', sabotage: true },
+    };
+    const intent = intents[enemy.intent] ?? intents.strike;
+    const label =
+      turns <= 0
+        ? 'Enemy is <b>attacking!</b>'
+        : `<span class="cd-icon">${intent.icon}</span> ${intent.text} in <b>${turns}</b> ${turns === 1 ? 'turn' : 'turns'}`;
     this.el.countdown.querySelector('.countdown-text').innerHTML = label;
     this.el.countdown.classList.toggle('is-imminent', turns <= 1);
+    this.el.countdown.classList.toggle('is-sabotage', intent.sabotage);
   }
 
   /**

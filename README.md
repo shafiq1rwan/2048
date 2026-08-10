@@ -71,10 +71,21 @@ it takes for it to ship.
 - **Merge = attack.** Two matching units combine into the next unit, which
   immediately fires at the enemy. Damage is `2 ^ mergedLevel`, then the
   player's flat bonus, damage multiplier and crit roll are applied.
+- **Combos.** Chained merges in a single move escalate — the 2nd merge deals
+  ×1.5, the 3rd ×2, capped at ×3 — so setting the board up beats merging
+  greedily one pair at a time.
 - **Turns.** Every *valid* move is one turn. An illegal move nudges the board
   and costs nothing. The enemy only swings when its countdown reaches zero,
   so moving is never punished directly — and a turn that kills the enemy
   skips the countdown tick entirely.
+- **Telegraphs.** The countdown chip names what the next swing will actually
+  do: `⚔ ~12 dmg`, `💣 Bomb`, or `❄ Freeze`. Sabotage intents tint the chip
+  purple so they read at a glance.
+- **Enemy abilities.** Bombers lob a bomb that hits for 65% damage and drops
+  **rubble** — a wall tiles slide against but never through, gone after 4
+  moves. Adepts **freeze** a unit solid: it can't move or merge until it
+  thaws 3 moves later. Killing the enemy clears everything it left, so
+  sabotage is pressure to finish the fight, not a slow bleed.
 - **Floors.** Beat an enemy for gold and XP, then the next one walks in. Every
   5th floor is a boss: far more HP, harder hits, a longer countdown, triple
   rewards, and a shop afterwards. Gold drops as coins that tumble out of the
@@ -212,6 +223,11 @@ example, is CC-BY 4.0) require attribution.
 ## Tuning
 
 - Difficulty: the `scale*` functions and boss multipliers in `data/enemies.js`.
+- Enemy abilities: each roster entry's `pattern` in `data/enemies.js` (cycled
+  one entry per swing; omit for pure strikers). Combo escalation lives in
+  `COMBO` and per-intent damage in `INTENT_DAMAGE`, both in
+  `combat/CombatSystem.js`; rubble/freeze durations are the `addRubble` /
+  `freezeRandomUnit` defaults used in `Game.js`.
 - Feel: every duration lives in `TIME` in `core/config.js`.
 - HUD type: the `--fs-1`..`--fs-5` tokens at the top of `styles/main.css`. Each
   is `max(floor, N * var(--u))` — text follows the board's scale but never

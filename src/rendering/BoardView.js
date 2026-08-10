@@ -41,8 +41,10 @@ class TileView extends THREE.Group {
   constructor(tile, assets) {
     super();
     this.tileId = tile.id;
+    this.tile = tile;
     this.assets = assets;
     this.level = 0;
+    this.isFrozen = false;
 
     /** Wrapper that carries pop/squash so position stays independent. */
     this.body = new THREE.Group();
@@ -165,7 +167,23 @@ class TileView extends THREE.Group {
     this.body.scale.set(x, y, 1);
   }
 
+  /** Icy tint + paused animation while the unit is frozen solid. */
+  setFrozen(frozen) {
+    this.isFrozen = frozen;
+    this.plateMaterial.color.set(frozen ? '#8fc8ea' : '#ffffff');
+    if (this.unit) {
+      this.unit.mesh.material.color.set(frozen ? '#b8dcf5' : '#ffffff');
+      if (frozen) this.unit.animator.stop();
+      else this.unit.animator.playing = true;
+    }
+  }
+
   update(dt, time) {
+    // Freeze state lives on the tile; the view just mirrors it, so a
+    // thaw (per-turn or on enemy death) needs no explicit plumbing.
+    const frozen = this.tile.frozenFor > 0;
+    if (frozen !== this.isFrozen) this.setFrozen(frozen);
+
     this.unit?.update(dt);
     if (this.aura.visible) {
       this.auraMaterial.opacity = 0.24 + Math.sin(time * 3.1 + this.tileId) * 0.1;
@@ -178,6 +196,102 @@ class TileView extends THREE.Group {
     this.labelMaterial.dispose();
     this.starsMaterial.dispose();
     this.auraMaterial.dispose();
+    this.removeFromParent();
+  }
+}
+
+/**
+ * A rubble blocker dropped by an enemy bomb: dark plate, a rock, and a
+ * countdown of the moves left before it crumbles. Shares TileView's
+ * body/squash interface so board-wide reactions treat it like any tile.
+ */
+class RubbleView extends THREE.Group {
+  constructor(tile, assets) {
+    super();
+    this.tileId = tile.id;
+    this.tile = tile;
+    this.isRubble = true;
+    this.shownTtl = -1;
+
+    this.body = new THREE.Group();
+    this.add(this.body);
+
+    this.plateMaterial = new THREE.MeshBasicMaterial({
+      map: tilePlateTexture({
+        fill: '#57534e',
+        edge: '#7c766e',
+        size: CELL_TEX,
+        radius: CELL_RADIUS_TEX,
+      }),
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.plate = new THREE.Mesh(UNIT_PLANE, this.plateMaterial);
+    this.plate.renderOrder = RENDER_LAYER.tile;
+    this.plate.scale.set(BOARD.cell, BOARD.cell, 1);
+    this.body.add(this.plate);
+
+    const rockTexture = assets.get('rock_a');
+    const img = rockTexture.image;
+    const aspect = img && img.height ? img.width / img.height : 1;
+    this.rockMaterial = new THREE.MeshBasicMaterial({
+      map: rockTexture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      alphaTest: 0.02,
+    });
+    this.rock = new THREE.Mesh(UNIT_PLANE, this.rockMaterial);
+    this.rock.renderOrder = RENDER_LAYER.tileUnit;
+    const rockH = BOARD.cell * 0.52;
+    this.rock.scale.set(rockH * aspect, rockH, 1);
+    this.rock.position.set(0, -BOARD.cell * 0.06, 0);
+    this.body.add(this.rock);
+
+    this.labelMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.label = new THREE.Mesh(UNIT_PLANE, this.labelMaterial);
+    this.label.renderOrder = RENDER_LAYER.tileLabel;
+    this.body.add(this.label);
+    this.setTtl(tile.ttl);
+  }
+
+  /** Moves left before it crumbles, bottom-right like a unit's level. */
+  setTtl(ttl) {
+    this.shownTtl = ttl;
+    const { texture, aspect } = textTexture(String(Math.max(0, ttl)), {
+      fontSize: 46,
+      color: '#e6ddcc',
+      outline: '#141728',
+      outlineWidth: 8,
+    });
+    this.labelMaterial.map = texture;
+    this.labelMaterial.needsUpdate = true;
+    const labelH = 24;
+    this.label.scale.set(labelH * aspect, labelH, 1);
+    this.label.position.set(BOARD.cell * 0.3, -BOARD.cell * 0.335, 0);
+  }
+
+  setBodyScale(scale) {
+    this.body.scale.set(scale, scale, 1);
+  }
+
+  setSquash(x, y) {
+    this.body.scale.set(x, y, 1);
+  }
+
+  update() {
+    if (this.tile.ttl !== this.shownTtl) this.setTtl(this.tile.ttl);
+  }
+
+  dispose() {
+    this.plateMaterial.dispose();
+    this.rockMaterial.dispose();
+    this.labelMaterial.dispose();
     this.removeFromParent();
   }
 }
@@ -249,11 +363,12 @@ export class BoardView {
     return this.views.get(tile.id) ?? null;
   }
 
-  /** Place a view for a tile that is not on screen yet. */
+  /** Place a view for a tile (unit or rubble) not on screen yet. */
   addTile(tile, { animate = true } = {}) {
     let view = this.views.get(tile.id);
     if (!view) {
-      view = new TileView(tile, this.assets);
+      view =
+        tile.kind === 'rubble' ? new RubbleView(tile, this.assets) : new TileView(tile, this.assets);
       this.views.set(tile.id, view);
       this.root.add(view);
     }
@@ -463,6 +578,42 @@ export class BoardView {
     if (view) return { x: view.position.x, y: view.position.y };
     const { x, y } = cellCenter(tile.row, tile.col);
     return { x, y };
+  }
+
+  /**
+   * React to debuffs ageing out (or being cleared on an enemy death):
+   * expired rubble crumbles, thawed units get a little glint. The icy
+   * tint itself resets via TileView.update reading the tile state.
+   */
+  applyTick({ expired = [], thawed = [] } = {}) {
+    for (const tile of expired) this.crumble(tile);
+    for (const tile of thawed) {
+      const view = this.views.get(tile.id);
+      if (view) {
+        this.effects.flashRing(view.position.x, view.position.y, {
+          size: BOARD.cell * 1.1,
+          color: '#bfeaff',
+          duration: 280,
+        });
+      }
+    }
+  }
+
+  /** Rubble collapses into dust and disappears. */
+  crumble(tile) {
+    const view = this.views.get(tile.id);
+    if (!view) return;
+    this.views.delete(tile.id);
+    this.effects.dust(view.position.x, view.position.y - BOARD.cell * 0.2, {
+      size: BOARD.cell * 0.9,
+    });
+    this.tweens.add({
+      duration: 200,
+      ease: Ease.inQuad,
+      onUpdate: (v) => view.setBodyScale(1 - 0.92 * v),
+      onComplete: () => view.dispose(),
+      onCancel: () => view.dispose(),
+    });
   }
 
   /** Flash every tile — used on level-up and shop purchases. */

@@ -16,8 +16,22 @@ export class Enemy {
     this.countdownMax = def.countdownMax;
     this.countdown = def.countdownMax;
 
+    /** Attack pattern, cycled one entry per swing (see data/enemies.js). */
+    this.pattern = def.pattern ?? ['strike'];
+    this.patternIndex = 0;
+
     this.goldReward = def.gold;
     this.xpReward = def.xp;
+  }
+
+  /** What the next swing will do — shown to the player as a telegraph. */
+  get intent() {
+    return this.pattern[this.patternIndex % this.pattern.length];
+  }
+
+  /** Move to the next entry of the pattern after a swing. */
+  advanceIntent() {
+    this.patternIndex = (this.patternIndex + 1) % this.pattern.length;
   }
 
   get alive() {

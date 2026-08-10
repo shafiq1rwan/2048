@@ -320,6 +320,8 @@ export class Effects {
       heal: { color: '#a8f08a', glow: null, size: 62 },
       gold: { color: '#ffd45e', glow: null, size: 58 },
       xp: { color: '#a8e6ff', glow: null, size: 56 },
+      combo: { color: '#ffd45e', glow: '#ff8c20', size: 60 },
+      freeze: { color: '#bfeaff', glow: '#58a8e0', size: 56 },
     };
     const style = { ...(styles[kind] ?? styles.enemy) };
     if (big) {
@@ -372,6 +374,62 @@ export class Effects {
 
     if (crit) this.flashRing(x, y + 20, { size: 150, color: '#ffcf5a', duration: 240 });
     return mesh;
+  }
+
+  /**
+   * A lobbed projectile on a ballistic arc — the goblin bomb. Resolves
+   * false if cancelled (restart) so callers can bail out.
+   *
+   * @param {{x:number,y:number}} from
+   * @param {{x:number,y:number}} to
+   * @returns {Promise<boolean>}
+   */
+  lob(from, to, { duration = 460, size = 34, arc = 130, color = '#5a5a6a' } = {}) {
+    const material = new THREE.MeshBasicMaterial({
+      map: orbTexture({ color }),
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(UNIT_PLANE, material);
+    mesh.userData.ownMaterial = true;
+    mesh.renderOrder = RENDER_LAYER.effect;
+    mesh.scale.set(size, size, 1);
+    mesh.position.set(from.x, from.y, 0);
+    this.root.add(mesh);
+    this.transient.push(mesh);
+
+    let trailTimer = 0;
+    return new Promise((resolve) => {
+      this.tweens.add({
+        duration,
+        ease: Ease.linear,
+        onUpdate: (v, dtMs) => {
+          mesh.position.x = from.x + (to.x - from.x) * v;
+          mesh.position.y = from.y + (to.y - from.y) * v + arc * Math.sin(v * Math.PI);
+          mesh.rotation.z -= (dtMs ?? 16) * 0.012;
+          trailTimer += dtMs ?? 16;
+          if (trailTimer > 55) {
+            trailTimer = 0;
+            this.sparks(mesh.position.x, mesh.position.y, {
+              count: 1,
+              color: '#ffb060',
+              speed: 40,
+              size: 8,
+              life: 0.3,
+            });
+          }
+        },
+        onComplete: () => {
+          this.removeTransient(mesh);
+          resolve(true);
+        },
+        onCancel: () => {
+          this.removeTransient(mesh);
+          resolve(false);
+        },
+      });
+    });
   }
 
   /** Shared material for dropped coins (Tiny Swords coin icon). */

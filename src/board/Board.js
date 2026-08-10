@@ -87,6 +87,85 @@ export class Board {
     return hasMoves(this.cells);
   }
 
+  // ---------------------------------------------------------------- //
+  // enemy sabotage: rubble blockers + frozen units
+  // ---------------------------------------------------------------- //
+
+  /** A random empty cell, or null when the board is packed. */
+  randomEmptyCell() {
+    const empty = this.emptyCells();
+    if (empty.length === 0) return null;
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  /**
+   * Drop rubble on an empty cell. It acts as a wall for `ttl` player
+   * moves, then crumbles.
+   * @returns {Tile|null} null if the cell is taken
+   */
+  addRubble(row, col, ttl = 4) {
+    if (this.cells[row]?.[col] !== null) return null;
+    const tile = new Tile(0, row, col, 'rubble');
+    tile.ttl = ttl;
+    this.cells[row][col] = tile;
+    return tile;
+  }
+
+  /**
+   * Freeze a random unfrozen unit for `turns` player moves.
+   * @returns {Tile|null} the frozen tile, or null if none qualify
+   */
+  freezeRandomUnit(turns = 3) {
+    const units = this.tiles().filter((t) => t.kind === 'unit' && t.frozenFor <= 0);
+    if (units.length === 0) return null;
+    const tile = units[Math.floor(Math.random() * units.length)];
+    tile.frozenFor = turns;
+    return tile;
+  }
+
+  /**
+   * One player move passed: age every debuff.
+   * @returns {{expired: Tile[], thawed: Tile[]}} rubble that crumbled
+   *          and units that just unfroze, for the renderer to react to
+   */
+  tick() {
+    const expired = [];
+    const thawed = [];
+    for (const tile of this.tiles()) {
+      if (tile.kind === 'rubble') {
+        tile.ttl -= 1;
+        if (tile.ttl <= 0) {
+          this.cells[tile.row][tile.col] = null;
+          expired.push(tile);
+        }
+      } else if (tile.frozenFor > 0) {
+        tile.frozenFor -= 1;
+        if (tile.frozenFor === 0) thawed.push(tile);
+      }
+    }
+    return { expired, thawed };
+  }
+
+  /**
+   * The enemy that caused them is dead: all rubble crumbles and every
+   * unit thaws at once.
+   * @returns {{expired: Tile[], thawed: Tile[]}}
+   */
+  clearDebuffs() {
+    const expired = [];
+    const thawed = [];
+    for (const tile of this.tiles()) {
+      if (tile.kind === 'rubble') {
+        this.cells[tile.row][tile.col] = null;
+        expired.push(tile);
+      } else if (tile.frozenFor > 0) {
+        tile.frozenFor = 0;
+        thawed.push(tile);
+      }
+    }
+    return { expired, thawed };
+  }
+
   highestLevel() {
     let best = 0;
     for (const tile of this.tiles()) best = Math.max(best, tile.level);

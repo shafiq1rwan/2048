@@ -200,6 +200,29 @@ export class SoundManager {
         break;
       }
 
+      case 'combo': {
+        // quick rising two-note sting, higher for deeper chains
+        const base = 620 + (opts.step ?? 3) * 60;
+        this.tone({ freq: base, type: 'square', duration: 0.06, gain: 0.09 });
+        this.tone({ freq: base * 1.34, type: 'square', duration: 0.09, gain: 0.09, delay: 0.05 });
+        break;
+      }
+
+      case 'bomb':
+        // fuse whistle down into a thump
+        this.tone({ freq: 1400, type: 'triangle', duration: 0.4, gain: 0.06, slideTo: 500 });
+        this.noise({ duration: 0.3, gain: 0.18, filterFreq: 480, sweepTo: 70, delay: 0.42 });
+        this.tone({ freq: 95, type: 'sawtooth', duration: 0.22, gain: 0.12, slideTo: 55, delay: 0.42 });
+        break;
+
+      case 'freeze':
+        // glassy descending shimmer
+        [1760, 1320, 990].forEach((freq, i) => {
+          this.tone({ freq, type: 'triangle', duration: 0.16, gain: 0.07, delay: i * 0.07 });
+        });
+        this.noise({ duration: 0.24, gain: 0.05, filterFreq: 5200, type: 'highpass', delay: 0.05 });
+        break;
+
       case 'buy':
         this.tone({ freq: 784, type: 'square', duration: 0.08, gain: 0.1 });
         this.tone({ freq: 1175, type: 'square', duration: 0.12, gain: 0.08, delay: 0.06 });

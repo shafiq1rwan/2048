@@ -33,6 +33,16 @@ function lineCoords(dir, index, size) {
 }
 
 /**
+ * Locked tiles (rubble, frozen units) act as walls: they hold their
+ * cell, and free tiles slide up against them without crossing. Reads
+ * the properties directly so plain `{level}` objects in tests count as
+ * ordinary unlocked tiles.
+ */
+function isLocked(tile) {
+  return Boolean(tile && (tile.kind === 'rubble' || tile.frozenFor > 0));
+}
+
+/**
  * Resolve one move.
  *
  * Tiles mutate their own row/col/level so the renderer can read final
@@ -55,16 +65,15 @@ export function slide(cells, dir) {
   const merges = [];
   let moved = false;
 
-  for (let index = 0; index < size; index++) {
-    const coords = lineCoords(dir, index, size);
-
+  /** Slide + merge the free tiles occupying coords[start..end). */
+  const runSegment = (coords, start, end) => {
     const queue = [];
-    for (const { row, col } of coords) {
-      const tile = cells[row][col];
+    for (let pos = start; pos < end; pos++) {
+      const tile = cells[coords[pos].row][coords[pos].col];
       if (tile) queue.push(tile);
     }
 
-    let slot = 0;
+    let slot = start;
     let i = 0;
     while (i < queue.length) {
       const tile = queue[i];
@@ -103,6 +112,22 @@ export function slide(cells, dir) {
       }
       slot++;
     }
+  };
+
+  for (let index = 0; index < size; index++) {
+    const coords = lineCoords(dir, index, size);
+
+    // Locked tiles split the line into independent segments.
+    let segStart = 0;
+    for (let pos = 0; pos <= size; pos++) {
+      const coord = pos < size ? coords[pos] : null;
+      const tile = coord ? cells[coord.row][coord.col] : null;
+      if (pos === size || isLocked(tile)) {
+        runSegment(coords, segStart, pos);
+        if (tile) next[coord.row][coord.col] = tile;
+        segStart = pos + 1;
+      }
+    }
   }
 
   return { moved, cells: next, moves, merges };
@@ -111,12 +136,30 @@ export function slide(cells, dir) {
 /** True if any direction would change the board. */
 export function hasMoves(cells) {
   const size = cells.length;
+  const freeUnitAt = (row, col) => {
+    const tile = cells[row]?.[col] ?? null;
+    return tile && !isLocked(tile) ? tile : null;
+  };
+
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       const tile = cells[row][col];
-      if (!tile) return true;
-      const right = col + 1 < size ? cells[row][col + 1] : null;
-      const down = row + 1 < size ? cells[row + 1][col] : null;
+      if (!tile) {
+        // An empty cell is only an option if a free tile can actually
+        // slide into it — with rubble walls around, it may not be.
+        if (
+          freeUnitAt(row - 1, col) ||
+          freeUnitAt(row + 1, col) ||
+          freeUnitAt(row, col - 1) ||
+          freeUnitAt(row, col + 1)
+        ) {
+          return true;
+        }
+        continue;
+      }
+      if (isLocked(tile)) continue;
+      const right = freeUnitAt(row, col + 1);
+      const down = freeUnitAt(row + 1, col);
       if (right && right.level === tile.level) return true;
       if (down && down.level === tile.level) return true;
     }

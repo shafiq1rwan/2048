@@ -1,6 +1,24 @@
 import { shuffled } from '../core/Tween.js';
 
 /**
+ * Chain merges in one move escalate: the 2nd merge deals x1.5, the 3rd
+ * x2 and so on, capped. Rewards setting the board up over merging
+ * greedily one pair at a time.
+ */
+export const COMBO = { step: 0.5, max: 3 };
+
+/** Damage multiplier for the Nth merge of a single move (0-based). */
+export function comboMultiplier(index) {
+  return Math.min(COMBO.max, 1 + COMBO.step * index);
+}
+
+/**
+ * What each enemy intent does to the player, as a fraction of the
+ * enemy's attack stat. Board sabotage trades damage for pressure.
+ */
+export const INTENT_DAMAGE = { strike: 1, bomb: 0.65, freeze: 0 };
+
+/**
  * The rules of a fight. Pure state changes and number crunching — the
  * animation sequencing lives in Game.js so combat stays testable.
  */
@@ -27,17 +45,20 @@ export class CombatSystem {
   /**
    * Damage for a single merge. Returns null when there is nothing to hit.
    * @param {number} mergedLevel
+   * @param {number} [combo] damage multiplier for chained merges
    */
-  resolveMerge(mergedLevel) {
+  resolveMerge(mergedLevel, combo = 1) {
     const enemy = this.enemy;
     if (!enemy || !enemy.alive) return null;
 
     const { damage, crit } = this.player.mergeDamage(mergedLevel);
-    const result = enemy.takeDamage(damage);
+    const total = Math.max(1, Math.round(damage * combo));
+    const result = enemy.takeDamage(total);
     return {
       level: mergedLevel,
       damage: result.dealt,
-      requested: damage,
+      requested: total,
+      combo,
       crit,
       killed: result.dead,
     };
@@ -55,16 +76,24 @@ export class CombatSystem {
   }
 
   /**
-   * Enemy swing. Bosses hit for a bit more than their listed attack.
-   * @returns {{damage: number, blocked: boolean, dealt: number, dead: boolean}}
+   * Enemy swing, typed by intent. A strike is pure damage; a bomb hits
+   * softer (the rubble it leaves is handled by the caller, which owns
+   * the board); a freeze deals none and never wastes a player shield.
+   *
+   * @param {'strike'|'bomb'|'freeze'} [intent]
+   * @returns {{type: string, damage: number, blocked: boolean,
+   *            dealt: number, dead: boolean}}
    */
-  performEnemyAttack() {
+  performEnemyAttack(intent = 'strike') {
     const enemy = this.enemy;
+    const fraction = INTENT_DAMAGE[intent] ?? 1;
     const variance = 0.9 + Math.random() * 0.2;
-    const damage = Math.max(1, Math.round(enemy.attack * variance));
-    const result = this.player.takeDamage(damage);
+    const damage = fraction > 0 ? Math.max(1, Math.round(enemy.attack * fraction * variance)) : 0;
+    const result =
+      damage > 0 ? this.player.takeDamage(damage) : { blocked: false, dealt: 0, dead: false };
+    enemy.advanceIntent();
     this.resetCountdown(enemy);
-    return { damage, ...result };
+    return { type: intent, damage, ...result };
   }
 
   /** Rewards for the kill, already multiplied by the player's perks. */

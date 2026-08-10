@@ -85,28 +85,82 @@ const SHEETS = {
 };
 
 /**
+ * Attack patterns (cycled per swing, telegraphed to the player):
+ *   strike — plain damage
+ *   bomb   — 65% damage + rubble on an empty cell that walls the board
+ *            off for a few moves
+ *   freeze — no damage, but a random unit is frozen solid: it can't
+ *            move or merge until it thaws
+ * Killing the enemy clears every debuff it left, so sabotage is
+ * pressure to finish it, not a slow bleed. Enemies without a pattern
+ * default to ['strike'].
+ */
+
+/**
  * Normal enemies, cycled in order. `heightMul` nudges the rendered size
  * so a sheep does not end up as tall as a knight.
  */
 export const ENEMIES = [
   { name: 'Woolly Beast', sheet: SHEETS.sheep, heightMul: 0.62, hpMul: 0.85 },
   { name: 'Goblin Torch', sheet: SHEETS.goblinTorchRed, heightMul: 0.92 },
-  { name: 'Goblin Bomber', sheet: SHEETS.goblinTntRed, heightMul: 0.9, hpMul: 0.92, atkMul: 1.15 },
+  {
+    name: 'Goblin Bomber',
+    sheet: SHEETS.goblinTntRed,
+    heightMul: 0.9,
+    hpMul: 0.92,
+    atkMul: 1.15,
+    pattern: ['strike', 'bomb'],
+  },
   { name: 'Goblin Brute', sheet: SHEETS.goblinTorchPurple, heightMul: 1.0, hpMul: 1.12 },
   { name: 'Rogue Knight', sheet: SHEETS.warriorRed, heightMul: 1.0 },
   { name: 'Dark Archer', sheet: SHEETS.archerBlack, heightMul: 0.98, hpMul: 0.9, atkMul: 1.2 },
-  { name: 'Sapper Goblin', sheet: SHEETS.goblinTntPurple, heightMul: 0.95, atkMul: 1.1 },
-  { name: 'Cult Adept', sheet: SHEETS.monkPurple, heightMul: 0.95, hpMul: 1.15 },
+  {
+    name: 'Sapper Goblin',
+    sheet: SHEETS.goblinTntPurple,
+    heightMul: 0.95,
+    atkMul: 1.1,
+    pattern: ['bomb', 'strike'],
+  },
+  {
+    name: 'Cult Adept',
+    sheet: SHEETS.monkPurple,
+    heightMul: 0.95,
+    hpMul: 1.15,
+    pattern: ['freeze', 'strike'],
+  },
   { name: 'Blade Marauder', sheet: SHEETS.warriorPurple, heightMul: 1.02 },
-  { name: 'Crimson Ranger', sheet: SHEETS.archerRed, heightMul: 1.0, atkMul: 1.15 },
+  {
+    name: 'Crimson Ranger',
+    sheet: SHEETS.archerRed,
+    heightMul: 1.0,
+    atkMul: 1.15,
+    pattern: ['strike', 'freeze'],
+  },
 ];
 
 /** Bosses, cycled in order every BOSS_EVERY floors. */
 export const BOSSES = [
-  { name: 'Goblin Chieftain', sheet: SHEETS.goblinTorchYellow, heightMul: 1.0 },
+  {
+    name: 'Goblin Chieftain',
+    sheet: SHEETS.goblinTorchYellow,
+    heightMul: 1.0,
+    pattern: ['strike', 'bomb'],
+  },
   { name: 'The Black Knight', sheet: SHEETS.warriorBlack, heightMul: 1.0 },
-  { name: 'Warlord Grimtusk', sheet: SHEETS.goblinTorchPurple, heightMul: 1.05, atkMul: 1.1 },
-  { name: 'Dread Sovereign', sheet: SHEETS.monkPurple, heightMul: 1.0, hpMul: 1.15 },
+  {
+    name: 'Warlord Grimtusk',
+    sheet: SHEETS.goblinTorchPurple,
+    heightMul: 1.05,
+    atkMul: 1.1,
+    pattern: ['bomb', 'strike'],
+  },
+  {
+    name: 'Dread Sovereign',
+    sheet: SHEETS.monkPurple,
+    heightMul: 1.0,
+    hpMul: 1.15,
+    pattern: ['freeze', 'strike', 'bomb'],
+  },
 ];
 
 // ---------------------------------------------------------------------
@@ -152,6 +206,7 @@ export function buildEnemy(index) {
     level: floor,
     maxHp: Math.max(8, Math.round(scaleHp(index) * (template.hpMul ?? 1) * bossHp)),
     attack: Math.max(2, Math.round(scaleAtk(index) * (template.atkMul ?? 1) * bossAtk)),
+    pattern: template.pattern ?? ['strike'],
     countdownMax: countdownFor(index, isBoss),
     gold: Math.round(scaleGold(index) * bossReward),
     xp: Math.round(scaleXp(index) * bossReward),

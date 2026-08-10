@@ -1,6 +1,6 @@
 import { Board } from './board/Board.js';
 import { Player } from './combat/Player.js';
-import { CombatSystem } from './combat/CombatSystem.js';
+import { CombatSystem, comboMultiplier } from './combat/CombatSystem.js';
 import { EnemyManager } from './progression/EnemyManager.js';
 import { UpgradeSystem } from './progression/UpgradeSystem.js';
 import { ShopSystem } from './progression/ShopSystem.js';
@@ -10,7 +10,7 @@ import { BattlefieldView } from './rendering/BattlefieldView.js';
 import { Effects } from './rendering/Effects.js';
 import { InputManager } from './input/InputManager.js';
 import { Tweens } from './core/Tween.js';
-import { BOARD, TIME, SHAKE, DESIGN } from './core/config.js';
+import { BOARD, TIME, SHAKE, DESIGN, cellCenter } from './core/config.js';
 import { getUnit } from './data/units.js';
 
 /**
@@ -121,6 +121,9 @@ export class Game {
     this.score = 0;
     this.stats = { enemies: 0, bosses: 0, highestUnit: 0, goldEarned: 0, turns: 0 };
     this.stats.highestUnit = this.board.highestLevel();
+    // One-shot ability explainers, re-armed per run.
+    this.rubbleExplained = false;
+    this.freezeExplained = false;
 
     this.boardView.syncAll(this.board.tiles());
     this.ui.goldHold = false;
@@ -203,7 +206,8 @@ export class Game {
 
       this.registerMerge(merge.level);
 
-      const killed = await this.attackWithMerge(merge);
+      // Chained merges in one move escalate the damage.
+      const killed = await this.attackWithMerge(merge, comboMultiplier(i));
       if (!alive()) return;
 
       if (killed) {
@@ -214,6 +218,9 @@ export class Game {
     }
 
     if (!killedThisTurn) {
+      // Enemy debuffs age one turn: rubble crumbles, ice thaws.
+      this.boardView.applyTick(this.board.tick());
+
       const tick = this.combat.advanceTurn();
       this.ui.updateCountdown(this.enemy);
       if (tick.attacks) {
@@ -249,19 +256,27 @@ export class Game {
 
   /**
    * Launch the merged unit's attack at the current enemy.
+   * @param {number} [combo] damage multiplier for chained merges
    * @returns {Promise<boolean>} true if this attack killed the enemy
    */
-  async attackWithMerge(merge) {
+  async attackWithMerge(merge, combo = 1) {
     const enemy = this.enemy;
     if (!enemy || !enemy.alive) return false;
 
     const previousFraction = enemy.hpFraction;
-    const hit = this.combat.resolveMerge(merge.level);
+    const hit = this.combat.resolveMerge(merge.level, combo);
     if (!hit) return false;
 
     const from = this.boardView.tilePosition(merge.tile);
     const target = this.battlefield.enemyAnchor();
     const unit = getUnit(merge.level);
+
+    if (combo > 1) {
+      this.sound.play('combo', { step: Math.round(combo * 2) });
+      this.effects.damageNumber(from.x, from.y + BOARD.cell * 0.55, `COMBO x${combo}`, {
+        kind: 'combo',
+      });
+    }
 
     this.sound.play('attack');
     await this.effects.bolt(
@@ -319,6 +334,9 @@ export class Game {
 
     this.sound.play('enemyDeath');
     this.renderer.shake.add(wasBoss ? SHAKE.bossDeath : SHAKE.enemyDeath, 7);
+
+    // Its sabotage dies with it: rubble crumbles, frozen units thaw.
+    this.boardView.applyTick(this.board.clearDebuffs());
 
     const anchor = this.battlefield.enemyAnchor();
     // Loot bursts out *with* the death explosion rather than queueing behind
@@ -499,55 +517,153 @@ export class Game {
     this.ui.updateCountdown(enemy);
   }
 
-  /** Enemy's turn: wind up, swing, resolve. */
+  /** Enemy's turn: wind up, swing, resolve whatever it telegraphed. */
   async enemyAttackSequence() {
     const token = this.runToken;
     const alive = () => token === this.runToken;
     const enemy = this.enemy;
     if (!enemy || !enemy.alive) return;
 
+    const intent = enemy.intent;
     this.ui.updateCountdown(enemy);
     await this.battlefield.attackAnimation();
     if (!alive()) return;
 
-    const result = this.combat.performEnemyAttack();
+    const result = this.combat.performEnemyAttack(intent);
     const impact = { x: 0, y: BOARD.centerY + BOARD.cell * 1.6 };
+    let landed = false;
 
-    if (result.blocked) {
-      this.sound.play('block');
-      this.effects.flashRing(impact.x, impact.y, { size: 260, color: '#8fd8ff', duration: 300 });
-      this.effects.damageNumber(impact.x, impact.y, 'BLOCKED', { kind: 'heal' });
-      this.ui.toast('Shield held!', 'good');
-      this.renderer.shake.add(SHAKE.blocked, 9);
+    if (intent === 'freeze') {
+      await this.resolveFreeze();
+      if (!alive()) return;
+    } else if (intent === 'bomb') {
+      landed = await this.resolveBomb(result, impact);
+      if (!alive()) return;
+    } else if (result.blocked) {
+      this.showBlocked(impact);
     } else {
-      this.sound.play('playerHit');
-      this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
-      this.effects.screenFlash({ color: '#ff4a3a', opacity: 0.32, duration: 300 });
-      // The blow lands on the army: damage reads big over the middle of
-      // the board while the board itself jolts and the units go airborne.
-      this.effects.damageNumber(0, BOARD.centerY + 36, result.dealt, {
-        kind: 'player',
-        prefix: '-',
-        big: true,
-      });
-      this.boardView.hitReaction({
-        strength: Math.min(1.6, 0.85 + result.dealt / this.player.maxHp),
-      });
-      this.effects.sparks(impact.x, impact.y, {
-        count: 12,
-        color: '#ff8a72',
-        speed: 260,
-        size: 13,
-        life: 0.5,
-      });
-      this.renderer.shake.add(SHAKE.playerHit, 6.5);
+      this.showStrike(result, impact);
+      landed = true;
     }
 
     this.ui.updatePlayer(this.player, this.score);
     this.ui.updateCountdown(enemy);
     // An unblocked hit holds a beat longer so the units land before the
     // player's next move can start sliding them.
-    await this.tweens.wait(result.blocked ? 240 : TIME.tileLaunch);
+    await this.tweens.wait(landed ? TIME.tileLaunch : 240);
+  }
+
+  /** Shield absorbed the whole hit — a deliberate non-event. */
+  showBlocked(impact) {
+    this.sound.play('block');
+    this.effects.flashRing(impact.x, impact.y, { size: 260, color: '#8fd8ff', duration: 300 });
+    this.effects.damageNumber(impact.x, impact.y, 'BLOCKED', { kind: 'heal' });
+    this.ui.toast('Shield held!', 'good');
+    this.renderer.shake.add(SHAKE.blocked, 9);
+  }
+
+  /**
+   * The blow lands on the army: damage reads big over the middle of the
+   * board while the board itself jolts and the units go airborne.
+   */
+  showStrike(result, impact) {
+    this.sound.play('playerHit');
+    this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
+    this.effects.screenFlash({ color: '#ff4a3a', opacity: 0.32, duration: 300 });
+    this.effects.damageNumber(0, BOARD.centerY + 36, result.dealt, {
+      kind: 'player',
+      prefix: '-',
+      big: true,
+    });
+    this.boardView.hitReaction({
+      strength: Math.min(1.6, 0.85 + result.dealt / this.player.maxHp),
+    });
+    this.effects.sparks(impact.x, impact.y, {
+      count: 12,
+      color: '#ff8a72',
+      speed: 260,
+      size: 13,
+      life: 0.5,
+    });
+    this.renderer.shake.add(SHAKE.playerHit, 6.5);
+  }
+
+  /**
+   * Bomb: a lobbed shot that cracks the board — softer damage, but the
+   * crater walls a cell off for a few moves. A shield blocks the damage,
+   * not the crater.
+   * @returns {Promise<boolean>} true if damage landed (for the hold beat)
+   */
+  async resolveBomb(result, impact) {
+    const cell = this.board.randomEmptyCell();
+    const from = this.battlefield.enemyAnchor();
+    const to = cell ? cellCenter(cell.row, cell.col) : impact;
+
+    this.sound.play('bomb');
+    if (!(await this.effects.lob(from, to, { duration: 480, arc: 150 }))) return false;
+
+    this.effects.playSheet('explosion', to.x, to.y, { size: 175 });
+    this.effects.dust(to.x, to.y - 20, { size: 110, big: true });
+    this.renderer.shake.add(SHAKE.playerHit * 0.8, 7);
+
+    if (cell) {
+      const rubble = this.board.addRubble(cell.row, cell.col, 4);
+      if (rubble) {
+        this.boardView.addTile(rubble);
+        if (!this.rubbleExplained) {
+          this.rubbleExplained = true;
+          this.ui.toast('Rubble blocks that cell — kill the enemy to clear it!', 'warn');
+        }
+      }
+    }
+
+    if (result.blocked) {
+      this.showBlocked(impact);
+      return false;
+    }
+    if (result.dealt > 0) {
+      this.sound.play('playerHit');
+      this.effects.screenFlash({ color: '#ff4a3a', opacity: 0.24, duration: 260 });
+      this.effects.damageNumber(0, BOARD.centerY + 36, result.dealt, {
+        kind: 'player',
+        prefix: '-',
+        big: true,
+      });
+      this.boardView.hitReaction({ strength: 0.85 });
+      return true;
+    }
+    return false;
+  }
+
+  /** Freeze: no damage, but one unit is iced over for a few moves. */
+  async resolveFreeze() {
+    const tile = this.board.freezeRandomUnit(3);
+    if (!tile) {
+      this.ui.toast('The freezing spell fizzles!', 'good');
+      return;
+    }
+
+    const from = this.battlefield.enemyAnchor();
+    const to = this.boardView.tilePosition(tile);
+
+    this.sound.play('freeze');
+    if (!(await this.effects.bolt(from, to, { color: '#9ae0ff', duration: 240, width: 26 }))) {
+      return;
+    }
+
+    this.effects.flashRing(to.x, to.y, { size: 170, color: '#bfeaff', duration: 320 });
+    this.effects.sparks(to.x, to.y, {
+      count: 12,
+      color: '#bfeaff',
+      speed: 170,
+      size: 11,
+      life: 0.5,
+    });
+    this.effects.damageNumber(to.x, to.y + BOARD.cell * 0.4, 'FROZEN', { kind: 'freeze' });
+    if (!this.freezeExplained) {
+      this.freezeExplained = true;
+      this.ui.toast("Frozen units can't move or merge until they thaw!", 'warn');
+    }
   }
 
   // ------------------------------------------------------------------ //

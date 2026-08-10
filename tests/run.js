@@ -12,7 +12,7 @@ import { Tile, _resetTileIds } from '../src/board/Tile.js';
 import { slide, hasMoves } from '../src/board/MergeSystem.js';
 import { Player, xpForLevel } from '../src/combat/Player.js';
 import { Enemy } from '../src/combat/Enemy.js';
-import { CombatSystem } from '../src/combat/CombatSystem.js';
+import { CombatSystem, comboMultiplier, COMBO } from '../src/combat/CombatSystem.js';
 import { EnemyManager } from '../src/progression/EnemyManager.js';
 import { UpgradeSystem } from '../src/progression/UpgradeSystem.js';
 import { ShopSystem } from '../src/progression/ShopSystem.js';
@@ -583,6 +583,238 @@ test('shop prices rise on later visits', () => {
 });
 
 // ---------------------------------------------------------------------
+console.log('\nEnemy sabotage (rubble + freeze)');
+// ---------------------------------------------------------------------
+
+/** Drop rubble straight into a test grid. */
+function rubbleAt(cells, row, col, ttl = 4) {
+  const tile = new Tile(0, row, col, 'rubble');
+  tile.ttl = ttl;
+  cells[row][col] = tile;
+  return tile;
+}
+
+test('rubble is a wall: tiles slide up to it, never through it', () => {
+  const cells = gridFrom([
+    [0, 2, 0, 2],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  rubbleAt(cells, 0, 2);
+  const result = slide(cells, 'left');
+  assert.equal(result.moved, true);
+  assert.equal(result.cells[0][0].level, 2);
+  assert.equal(result.cells[0][2].kind, 'rubble');
+  assert.equal(result.cells[0][3].level, 2, 'the tile behind the wall had nowhere to go');
+  assert.equal(result.merges.length, 0, 'equal tiles must not merge across rubble');
+});
+
+test('rubble never moves, in any direction', () => {
+  for (const dir of ['up', 'down', 'left', 'right']) {
+    const cells = gridFrom([
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    rubbleAt(cells, 1, 2);
+    const result = slide(cells, dir);
+    assert.equal(result.moved, false, `rubble moved on ${dir}`);
+    assert.equal(result.cells[1][2].kind, 'rubble');
+  }
+});
+
+test('a frozen unit is immovable and unmergeable', () => {
+  const cells = gridFrom([
+    [1, 1, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  cells[0][1].frozenFor = 2;
+  const result = slide(cells, 'left');
+  assert.equal(result.moved, false, 'nothing can move: the pair must not merge');
+  assert.equal(result.cells[0][1].frozenFor, 2);
+});
+
+test('free tiles still slide within their segment beside a frozen unit', () => {
+  const cells = gridFrom([
+    [0, 3, 0, 3],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  cells[0][1].frozenFor = 1;
+  const result = slide(cells, 'left');
+  assert.equal(result.moved, true);
+  assert.equal(result.cells[0][1].level, 3, 'frozen tile holds its cell');
+  assert.equal(result.cells[0][2].level, 3, 'free tile slides up to the ice');
+  assert.equal(result.merges.length, 0);
+});
+
+test('hasMoves is false when the only unit is walled in', () => {
+  const cells = gridFrom([
+    [1, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  rubbleAt(cells, 0, 1);
+  rubbleAt(cells, 1, 0);
+  assert.equal(hasMoves(cells), false, 'empty cells exist but nothing can reach them');
+});
+
+test('hasMoves sees the escape when the wall has a gap', () => {
+  const cells = gridFrom([
+    [1, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  rubbleAt(cells, 0, 1);
+  assert.equal(hasMoves(cells), true);
+});
+
+test('rubble ages per tick and crumbles at zero', () => {
+  const board = new Board();
+  board.cells = gridFrom([
+    [1, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 1],
+  ]);
+  const rubble = board.addRubble(2, 2, 2);
+  assert.ok(rubble, 'rubble lands on an empty cell');
+  assert.equal(board.addRubble(2, 2, 2), null, 'occupied cells refuse rubble');
+
+  let result = board.tick();
+  assert.equal(rubble.ttl, 1);
+  assert.equal(result.expired.length, 0);
+
+  result = board.tick();
+  assert.equal(result.expired[0], rubble);
+  assert.equal(board.get(2, 2), null, 'crumbled rubble frees the cell');
+});
+
+test('frozen units thaw after their turns pass', () => {
+  const board = new Board();
+  const tile = board.freezeRandomUnit(2);
+  assert.ok(tile && tile.frozenFor === 2);
+  board.tick();
+  assert.equal(tile.frozenFor, 1);
+  const { thawed } = board.tick();
+  assert.equal(thawed[0], tile);
+  assert.equal(tile.locked, false);
+});
+
+test('killing the enemy clears every debuff at once', () => {
+  const board = new Board();
+  board.addRubble(...Object.values(board.randomEmptyCell()), 4);
+  const frozen = board.freezeRandomUnit(3);
+  const { expired, thawed } = board.clearDebuffs();
+  assert.equal(expired.length, 1);
+  assert.equal(thawed[0], frozen);
+  assert.equal(board.tiles().every((t) => !t.locked), true);
+});
+
+test('spawns never land on rubble', () => {
+  const board = new Board();
+  board.cells = gridFrom([
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  // wall off everything except one legal cell
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      if (row === 3 && col === 3) continue;
+      rubbleAt(board.cells, row, col);
+    }
+  }
+  const spawned = board.spawn();
+  assert.deepEqual({ row: spawned.row, col: spawned.col }, { row: 3, col: 3 });
+  assert.equal(board.spawn(), null, 'no free cell left');
+});
+
+// ---------------------------------------------------------------------
+console.log('\nCombos + enemy intents');
+// ---------------------------------------------------------------------
+
+test('combo multiplier escalates by half per chained merge, capped', () => {
+  assert.equal(comboMultiplier(0), 1);
+  assert.equal(comboMultiplier(1), 1.5);
+  assert.equal(comboMultiplier(2), 2);
+  assert.equal(comboMultiplier(10), COMBO.max);
+});
+
+test('a combo merge multiplies the damage dealt', () => {
+  const player = new Player();
+  player.critChance = 0;
+  const enemies = new EnemyManager();
+  const combat = new CombatSystem(player, enemies);
+  enemies.next();
+  enemies.current.hp = 10000;
+  enemies.current.maxHp = 10000;
+
+  const plain = combat.resolveMerge(3, 1);
+  const chained = combat.resolveMerge(3, 2);
+  assert.equal(plain.requested, 8, '2^3 base');
+  assert.equal(chained.requested, 16, 'doubled by the combo');
+  assert.equal(chained.combo, 2);
+});
+
+test('a freeze intent deals no damage and never wastes a shield', () => {
+  const player = new Player();
+  player.shields = 1;
+  const enemies = new EnemyManager();
+  const combat = new CombatSystem(player, enemies);
+  enemies.next();
+
+  const result = combat.performEnemyAttack('freeze');
+  assert.equal(result.dealt, 0);
+  assert.equal(result.blocked, false);
+  assert.equal(player.shields, 1);
+  assert.equal(player.hp, player.maxHp);
+});
+
+test('a bomb intent hits for ~65% of a strike', () => {
+  const player = new Player();
+  player.maxHp = 100000;
+  player.hp = 100000;
+  const enemies = new EnemyManager();
+  const combat = new CombatSystem(player, enemies);
+  enemies.next();
+  enemies.current.attack = 100;
+
+  const result = combat.performEnemyAttack('bomb');
+  assert.ok(result.dealt >= 58 && result.dealt <= 72, `dealt ${result.dealt}`);
+});
+
+test('the intent cycles through the pattern, one entry per swing', () => {
+  const enemy = new Enemy({ ...buildEnemy(0), pattern: ['strike', 'bomb', 'freeze'] });
+  assert.equal(enemy.intent, 'strike');
+  enemy.advanceIntent();
+  assert.equal(enemy.intent, 'bomb');
+  enemy.advanceIntent();
+  assert.equal(enemy.intent, 'freeze');
+  enemy.advanceIntent();
+  assert.equal(enemy.intent, 'strike');
+});
+
+test('every pattern in the roster uses known intents', () => {
+  const known = new Set(['strike', 'bomb', 'freeze']);
+  for (let index = 0; index < 30; index++) {
+    const def = buildEnemy(index);
+    assert.ok(def.pattern.length >= 1, `${def.name} has an empty pattern`);
+    for (const intent of def.pattern) {
+      assert.ok(known.has(intent), `${def.name} has unknown intent "${intent}"`);
+    }
+  }
+});
+
+// ---------------------------------------------------------------------
 console.log('\nBalance sanity (a scripted run should be survivable)');
 // ---------------------------------------------------------------------
 
@@ -599,14 +831,24 @@ test('a greedy auto-player clears several floors without dying instantly', () =>
   const dirs = ['left', 'up', 'right', 'down'];
   let turns = 0;
 
+  // Clone including rubble and frozen state — toLevels() would lose both
+  // and make the probe mis-predict which moves are legal.
+  const cloneCells = () =>
+    board.cells.map((row) =>
+      row.map((tile) => {
+        if (!tile) return null;
+        const copy = new Tile(tile.level, tile.row, tile.col, tile.kind);
+        copy.ttl = tile.ttl;
+        copy.frozenFor = tile.frozenFor;
+        return copy;
+      }),
+    );
+
   while (player.alive && board.canMove() && turns < 3000) {
     // pick whichever direction merges the most this turn
     let best = null;
     for (const dir of dirs) {
-      const snapshot = board.toLevels();
-      const probe = new Board();
-      probe.cells = gridFrom(snapshot);
-      const result = slide(probe.cells, dir);
+      const result = slide(cloneCells(), dir);
       if (!result.moved) continue;
       const score = result.merges.reduce((sum, m) => sum + Math.pow(2, m.level), 0);
       if (!best || score > best.score) best = { dir, score };
@@ -617,10 +859,11 @@ test('a greedy auto-player clears several floors without dying instantly', () =>
     turns++;
 
     let killed = false;
-    for (const merge of result.merges) {
-      const hit = combat.resolveMerge(merge.level);
+    result.merges.forEach((merge, index) => {
+      const hit = combat.resolveMerge(merge.level, comboMultiplier(index));
       if (hit?.killed) {
         killed = true;
+        board.clearDebuffs();
         const rewards = combat.collectRewards();
         for (let i = 0; i < rewards.levelsGained; i++) {
           upgrades.apply(upgrades.roll(3)[0]);
@@ -628,8 +871,22 @@ test('a greedy auto-player clears several floors without dying instantly', () =>
         enemy = enemies.next();
         combat.resetCountdown(enemy);
       }
+    });
+
+    if (!killed) {
+      board.tick();
+      if (combat.advanceTurn().attacks) {
+        // mirror Game.js: the intent decides damage + board sabotage
+        const intent = enemies.current.intent;
+        combat.performEnemyAttack(intent);
+        if (intent === 'bomb') {
+          const cell = board.randomEmptyCell();
+          if (cell) board.addRubble(cell.row, cell.col, 4);
+        } else if (intent === 'freeze') {
+          board.freezeRandomUnit(3);
+        }
+      }
     }
-    if (!killed && combat.advanceTurn().attacks) combat.performEnemyAttack();
   }
 
   assert.ok(turns > 20, `run ended after only ${turns} turns`);
