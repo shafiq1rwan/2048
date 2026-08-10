@@ -82,6 +82,29 @@ export function cellCenter(row, col) {
   };
 }
 
+/**
+ * Camera shake magnitudes, in design units. The design box is 500 wide,
+ * so 10 units is a ~2% jolt — enough to feel, not enough to fight.
+ *
+ * Set `scale` to 0 to switch shake off entirely, or lower it to taste;
+ * it multiplies every value below.
+ */
+export const SHAKE = {
+  scale: 1,
+  /** Cap on stacked intensity so a long merge chain cannot spiral. */
+  max: 13,
+  /** Board-level feedback for a merge, growing slightly with tier. */
+  merge: (level) => Math.min(3.5, 0.8 + level * 0.3),
+  hit: 4,
+  crit: 7,
+  enemyDeath: 5.5,
+  bossDeath: 9,
+  bossLand: 9,
+  playerHit: 8.5,
+  blocked: 3,
+  gameOver: 7,
+};
+
 export const RENDER_LAYER = {
   sky: -60,
   clouds: -50,

@@ -377,6 +377,7 @@ export class UIManager {
 
     return new Promise((resolve) => {
       const buttons = [...panel.querySelectorAll('.choice')];
+      // slot-indexed, matching the "Press 1, 2 or 3" hint
       this.keyChoices = buttons;
       buttons.forEach((button, index) => {
         button.addEventListener('click', () => {
@@ -396,53 +397,67 @@ export class UIManager {
    * @returns {Promise<void>}
    */
   showShop(offers, player, onBuy) {
-    const render = () => `
+    const panel = this.openPanel(`
       <h2>&#128176; Camp Merchant</h2>
-      <p class="sub">Boss defeated! You carry <b>${player.gold} gold</b>.</p>
+      <p class="sub">Boss defeated! You carry <b><span id="shop-gold">${player.gold}</span> gold</b>.</p>
       <div class="choices">
-        ${offers
-          .map((item, i) =>
-            item.sold
-              ? `<button class="choice" disabled>
-                   <img class="c-icon" src="${this.assets.url(item.icon)}" alt="" />
-                   <span class="c-body"><span class="c-name">${esc(item.name)}</span>
-                   <span class="c-desc">Purchased</span></span>
-                 </button>`
-              : this.choiceHtml(item, i, { cost: item.cost, affordable: player.gold >= item.cost }),
-          )
-          .join('')}
+        ${offers.map((item, i) => this.choiceHtml(item, i, { cost: item.cost })).join('')}
       </div>
       <div class="btn-row">
         <button class="btn" id="btn-continue">Continue &#8594;</button>
       </div>
       <p class="keyhint">Press 1, 2 or 3 to buy &middot; Enter to continue</p>
-    `;
+    `);
 
-    let panel = this.openPanel(render());
+    const goldLabel = panel.querySelector('#shop-gold');
+    const buttons = [...panel.querySelectorAll('.choice')];
+    const cont = panel.querySelector('#btn-continue');
+
+    // Number keys address the three slots by position for the whole visit,
+    // so "2" cannot turn into Continue once a slot sells out.
+    this.keyChoices = buttons;
+
+    /**
+     * Repaint prices, affordability and sold state in place. Rebuilding
+     * the panel would restart its entrance animation, which reads as the
+     * shop having reopened.
+     */
+    const refresh = () => {
+      goldLabel.textContent = String(player.gold);
+      buttons.forEach((button, index) => {
+        const offer = offers[index];
+        if (offer.sold) {
+          button.disabled = true;
+          button.classList.add('is-sold');
+          const desc = button.querySelector('.c-desc');
+          if (desc) desc.textContent = 'Purchased';
+          button.querySelector('.c-cost')?.remove();
+        } else {
+          button.disabled = player.gold < offer.cost;
+        }
+      });
+    };
+    refresh();
 
     return new Promise((resolve) => {
-      const wire = () => {
-        const buttons = [...panel.querySelectorAll('.choice:not([disabled])')];
-        const cont = panel.querySelector('#btn-continue');
-        this.keyChoices = [...buttons, cont];
-
-        for (const button of buttons) {
-          const index = Number(button.dataset.index);
-          button.addEventListener('click', () => {
-            if (onBuy(offers[index])) {
-              offers[index].sold = true;
-              panel.outerHTML = `<div class="panel">${render()}</div>`;
-              panel = this.el.overlay.firstElementChild;
-              wire();
-            }
-          });
-        }
-        cont.addEventListener('click', () => {
-          this.closePanel();
-          resolve();
+      buttons.forEach((button, index) => {
+        button.addEventListener('animationend', () => button.classList.remove('just-bought'));
+        button.addEventListener('click', () => {
+          if (button.disabled || offers[index].sold) return;
+          if (!onBuy(offers[index])) return;
+          offers[index].sold = true;
+          refresh();
+          // Confirm on the row itself rather than the whole popup.
+          button.classList.remove('just-bought');
+          void button.offsetWidth; // force the animation to restart
+          button.classList.add('just-bought');
         });
-      };
-      wire();
+      });
+      cont.addEventListener('click', () => {
+        this.closePanel();
+        resolve();
+      });
+      cont.focus();
     });
   }
 

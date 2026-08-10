@@ -577,6 +577,29 @@ img {
   cursor: not-allowed;
 }
 
+/* Purchase confirmation on the bought row only — the popup itself must
+   not re-animate, or it reads as the shop reopening. */
+.choice.just-bought {
+  animation: choice-bought 520ms ease-out;
+  filter: none;
+}
+
+@keyframes choice-bought {
+  0% {
+    transform: none;
+    border-color: var(--gold);
+  }
+  30% {
+    transform: scale(1.03);
+    border-color: var(--green);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4), 0 0 22px rgba(111, 191, 74, 0.8);
+  }
+  100% {
+    transform: none;
+    border-color: var(--navy-600);
+  }
+}
+
 .choice .c-icon {
   width: 44px;
   height: 44px;

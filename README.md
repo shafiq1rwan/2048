@@ -187,5 +187,8 @@ example, is CC-BY 4.0) require attribution.
 
 - Difficulty: the `scale*` functions and boss multipliers in `data/enemies.js`.
 - Feel: every duration lives in `TIME` in `core/config.js`.
+- Camera shake: every magnitude lives in `SHAKE` in `core/config.js`. Peaks are
+  around 4–8 design units (under 2% of the board's width). Lower `SHAKE.scale`
+  to soften all of it at once, or set it to `0` to turn shake off completely.
 - Layout: `DESIGN`, `BOARD` and `SCENE` in `core/config.js` (the comment there
   documents the vertical budget).

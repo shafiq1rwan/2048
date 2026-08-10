@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SpriteEntity, UNIT_PLANE } from './SpriteAnimator.js';
 import { skyTexture, hillsTexture, shadowTexture, glowTexture } from './Textures.js';
-import { SCENE, RENDER_LAYER, TIME, DESIGN } from '../core/config.js';
+import { SCENE, RENDER_LAYER, TIME, DESIGN, SHAKE } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
 
 /** Where each piece of scenery stands. x is mirrored for |x| > design edge. */
@@ -376,7 +376,7 @@ export class BattlefieldView {
             return resolve(true);
           }
           this.enemyOffset.y = 0;
-          this.onShake?.(22, 7);
+          this.onShake?.(SHAKE.bossLand, 7);
           this.effects.dust(0, SCENE.enemyFeetY + 6, { size: 190, big: true });
           this.effects.sparks(0, SCENE.enemyFeetY + 10, {
             count: 16,

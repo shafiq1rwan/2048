@@ -10,7 +10,7 @@ import { BattlefieldView } from './rendering/BattlefieldView.js';
 import { Effects } from './rendering/Effects.js';
 import { InputManager } from './input/InputManager.js';
 import { Tweens } from './core/Tween.js';
-import { BOARD, TIME, SCENE } from './core/config.js';
+import { BOARD, TIME, SHAKE } from './core/config.js';
 import { getUnit } from './data/units.js';
 
 /**
@@ -233,7 +233,7 @@ export class Game {
     const power = Math.pow(2, level);
     this.score += power;
     this.sound.play('merge', { level });
-    this.renderer.shake.add(Math.min(7, 1.6 + level * 0.6), 9);
+    this.renderer.shake.add(SHAKE.merge(level), 9);
 
     if (level > this.stats.highestUnit) {
       this.stats.highestUnit = level;
@@ -276,7 +276,7 @@ export class Game {
       crit: hit.crit,
     });
     this.battlefield.hitReact({ crit: hit.crit, lethal: hit.killed });
-    this.renderer.shake.add(hit.crit ? 16 : 9, 8);
+    this.renderer.shake.add(hit.crit ? SHAKE.crit : SHAKE.hit, 8);
 
     this.score += Math.floor(hit.damage / 2);
     this.ui.updateEnemyHp(enemy, { showGhost: true, previousFraction });
@@ -302,7 +302,7 @@ export class Game {
     this.score += 25 * floor + (wasBoss ? 150 * floor : 0);
 
     this.sound.play('enemyDeath');
-    this.renderer.shake.add(wasBoss ? 22 : 12, 7);
+    this.renderer.shake.add(wasBoss ? SHAKE.bossDeath : SHAKE.enemyDeath, 7);
 
     const anchor = this.battlefield.enemyAnchor();
     await this.battlefield.die({ boss: wasBoss });
@@ -414,7 +414,7 @@ export class Game {
       this.effects.flashRing(impact.x, impact.y, { size: 260, color: '#8fd8ff', duration: 300 });
       this.effects.damageNumber(impact.x, impact.y, 'BLOCKED', { kind: 'heal' });
       this.ui.toast('Shield held!', 'good');
-      this.renderer.shake.add(7, 9);
+      this.renderer.shake.add(SHAKE.blocked, 9);
     } else {
       this.sound.play('playerHit');
       this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
@@ -430,7 +430,7 @@ export class Game {
         size: 13,
         life: 0.5,
       });
-      this.renderer.shake.add(20, 6.5);
+      this.renderer.shake.add(SHAKE.playerHit, 6.5);
     }
 
     this.ui.updatePlayer(this.player, this.score);
@@ -458,7 +458,7 @@ export class Game {
 
     this.sound.play('gameOver');
     this.effects.screenFlash({ color: '#1a0d12', opacity: 0.5, duration: 700 });
-    this.renderer.shake.add(16, 5);
+    this.renderer.shake.add(SHAKE.gameOver, 5);
 
     if (!(await this.tweens.wait(520)) || token !== this.runToken) return true;
 
