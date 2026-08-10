@@ -89,6 +89,20 @@ export class Renderer {
     };
   }
 
+  /**
+   * Viewport (CSS pixel) point -> world coordinates.
+   *
+   * Lets DOM HUD elements act as targets for in-scene effects, e.g.
+   * flying dropped coins into the gold readout.
+   */
+  screenToWorld(clientX, clientY) {
+    const { x, y, width, height, scale } = this.stageRect;
+    return {
+      x: (clientX - (x + width / 2)) / scale,
+      y: (y + height / 2 - clientY) / scale,
+    };
+  }
+
   add(object) {
     this.scene.add(object);
     return object;

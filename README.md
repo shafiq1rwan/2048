@@ -53,7 +53,9 @@ repo name hardcoded anywhere.
   skips the countdown tick entirely.
 - **Floors.** Beat an enemy for gold and XP, then the next one walks in. Every
   5th floor is a boss: far more HP, harder hits, a longer countdown, triple
-  rewards, and a shop afterwards.
+  rewards, and a shop afterwards. Gold drops as coins that tumble out of the
+  corpse and then magnetise into the HUD purse, each crediting its share as it
+  lands, so the counter climbs in step with the coins.
 - **Levelling.** Enough XP pauses the game for a three-choice upgrade.
 - **Game over** when HP hits 0 **or** the board has no legal move left. Score,
   deepest floor, strongest unit and boss count persist in `localStorage`.

@@ -55,6 +55,10 @@ export class Effects {
     this.particles = [];
     /** @type {THREE.Mesh[]} */
     this.transient = [];
+    /** Dropped coins in flight towards the HUD purse. */
+    this.coins = [];
+    /** Resolvers for in-flight goldBurst promises, settled by clear(). */
+    this.coinCancels = [];
 
     this.glowMaterials = new Map();
     /** World half-extents currently on screen, kept fresh by resize(). */
@@ -364,6 +368,140 @@ export class Effects {
     return mesh;
   }
 
+  /** Shared material for dropped coins (Tiny Swords coin icon). */
+  coinMaterial() {
+    if (!this._coinMaterial) {
+      this._coinMaterial = new THREE.MeshBasicMaterial({
+        map: this.assets.get('icon_gold'),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+      });
+    }
+    return this._coinMaterial;
+  }
+
+  /**
+   * Loot drop: coins burst out of the dying enemy, tumble under gravity
+   * for a beat, then magnetise into the HUD purse one after another.
+   *
+   * @param {{x:number,y:number}} from world position of the kill
+   * @param {{x:number,y:number}} to world position of the gold readout
+   * @param {number} amount gold awarded — drives how many coins spawn
+   * @param {{onCoin?:(index:number, total:number)=>void, onFirst?:()=>void}} [hooks]
+   * @returns {Promise<boolean>} resolves once the last coin lands
+   */
+  goldBurst(from, to, amount, hooks = {}) {
+    if (amount <= 0) return Promise.resolve(true);
+
+    // Enough coins to feel like loot, capped so a boss payout stays readable.
+    const count = Math.max(4, Math.min(12, Math.round(amount / 6)));
+    const material = this.coinMaterial();
+    let landed = 0;
+    let first = true;
+
+    return new Promise((resolve) => {
+      const settle = () => resolve(true);
+      this.coinCancels.push(settle);
+      const done = () => {
+        const at = this.coinCancels.indexOf(settle);
+        if (at >= 0) this.coinCancels.splice(at, 1);
+        settle();
+      };
+
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(UNIT_PLANE, material);
+        mesh.renderOrder = RENDER_LAYER.effect + 5;
+        const size = rand(23, 31);
+        mesh.scale.set(size, size, 1);
+        mesh.position.set(from.x + rand(-16, 16), from.y + rand(-12, 12), 0);
+        this.root.add(mesh);
+
+        // fan upwards and outwards out of the corpse
+        const angle = rand(Math.PI * 0.18, Math.PI * 0.82);
+        const speed = rand(170, 330);
+
+        this.coins.push({
+          mesh,
+          size,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          spin: rand(-9, 9),
+          age: 0,
+          scatter: TIME.goldScatter / 1000 + rand(0, 0.09),
+          delay: (i * TIME.goldStagger) / 1000,
+          flyFor: TIME.goldFly / 1000 + rand(0, 0.1),
+          t: 0,
+          curve: rand(-80, 80),
+          phase: 'scatter',
+          to,
+          onLand: () => {
+            landed++;
+            if (first) {
+              first = false;
+              hooks.onFirst?.();
+            }
+            hooks.onCoin?.(landed, count);
+            if (landed >= count) done();
+          },
+        });
+      }
+    });
+  }
+
+  /** Physics + magnet flight for dropped coins. */
+  updateCoins(dt) {
+    const GRAVITY = -900;
+    for (let i = this.coins.length - 1; i >= 0; i--) {
+      const coin = this.coins[i];
+      coin.age += dt;
+
+      if (coin.phase === 'scatter') {
+        coin.vy += GRAVITY * dt;
+        coin.mesh.position.x += coin.vx * dt;
+        coin.mesh.position.y += coin.vy * dt;
+        coin.mesh.rotation.z += coin.spin * dt;
+
+        if (coin.age >= coin.scatter + coin.delay) {
+          coin.phase = 'fly';
+          coin.t = 0;
+          coin.start = { x: coin.mesh.position.x, y: coin.mesh.position.y };
+          // unit normal to the flight path, for a slight arc
+          const dx = coin.to.x - coin.start.x;
+          const dy = coin.to.y - coin.start.y;
+          const len = Math.hypot(dx, dy) || 1;
+          coin.nx = -dy / len;
+          coin.ny = dx / len;
+        }
+        continue;
+      }
+
+      coin.t = Math.min(1, coin.t + dt / coin.flyFor);
+      // accelerating ease = the pull of a magnet rather than a glide
+      const eased = coin.t * coin.t;
+      const arc = Math.sin(coin.t * Math.PI) * coin.curve;
+      coin.mesh.position.set(
+        coin.start.x + (coin.to.x - coin.start.x) * eased + coin.nx * arc,
+        coin.start.y + (coin.to.y - coin.start.y) * eased + coin.ny * arc,
+        0,
+      );
+      coin.mesh.rotation.z += coin.spin * 1.7 * dt;
+      const shrink = coin.size * (1 - 0.35 * coin.t);
+      coin.mesh.scale.set(shrink, shrink, 1);
+
+      if (coin.t >= 1) {
+        coin.mesh.removeFromParent();
+        this.coins.splice(i, 1);
+        this.flashRing(coin.to.x, coin.to.y, {
+          size: 64,
+          color: '#ffd45e',
+          duration: 190,
+        });
+        coin.onLand();
+      }
+    }
+  }
+
   /** Floating icon + amount, used for gold and XP drops. */
   rewardPop(x, y, value, kind = 'gold') {
     this.damageNumber(x, y, value, { kind, prefix: '+' });
@@ -433,6 +571,8 @@ export class Effects {
       }
     }
 
+    this.updateCoins(dt);
+
     // spark particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -457,6 +597,11 @@ export class Effects {
     this.sprites.length = 0;
     for (const p of this.particles) p.mesh.removeFromParent();
     this.particles.length = 0;
+    for (const coin of this.coins) coin.mesh.removeFromParent();
+    this.coins.length = 0;
+    // Settle any awaited goldBurst so its sequence can bail out cleanly.
+    for (const settle of this.coinCancels.slice()) settle();
+    this.coinCancels.length = 0;
     for (const mesh of this.transient.slice()) {
       mesh.removeFromParent();
       if (mesh.userData.ownMaterial) mesh.material.dispose();

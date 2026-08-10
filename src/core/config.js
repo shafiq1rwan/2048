@@ -73,7 +73,13 @@ export const TIME = {
   enemySpawn: 420,
   bossSpawn: 700,
   damageNumber: 800,
-  victoryBeat: 340,
+  victoryBeat: 200,
+  /** Dropped coins tumble under gravity for this long before magnetising. */
+  goldScatter: 300,
+  /** Flight time from the scatter point to the HUD purse. */
+  goldFly: 380,
+  /** Per-coin delay, so they stream into the purse instead of clumping. */
+  goldStagger: 16,
 };
 
 /**

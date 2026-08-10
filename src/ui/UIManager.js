@@ -66,6 +66,14 @@ export class UIManager {
     this.pendingResolve = null;
     this.keyChoices = null;
 
+    /**
+     * While true, updatePlayer leaves the gold readout alone — a coin
+     * flight is animating it, and the number should climb as the coins
+     * land rather than jump the moment the reward is banked.
+     */
+    this.goldHold = false;
+    this.goldShown = 0;
+
     this.bindIcons();
     this.bindSoundButton();
     this.bindModalKeys();
@@ -212,10 +220,34 @@ export class UIManager {
     this.el.playerXpFill.style.width = `${Math.min(1, xpFraction) * 100}%`;
     this.el.playerXpText.textContent = `${player.xp} / ${player.xpToNext} XP`;
 
-    this.el.playerGold.textContent = String(player.gold);
+    if (!this.goldHold) this.setGoldDisplay(player.gold);
     this.el.playerScore.textContent = String(score);
 
     this.renderBadges(player);
+  }
+
+  /** Write a value straight into the gold readout. */
+  setGoldDisplay(value) {
+    this.goldShown = Math.max(0, Math.round(value));
+    if (this.el.playerGold) this.el.playerGold.textContent = String(this.goldShown);
+  }
+
+  /** Viewport-pixel centre of the gold readout — the coins' destination. */
+  goldAnchor() {
+    const el = this.el.playerGold?.closest('.stat-gold') ?? this.el.playerGold;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width && !rect.height) return null;
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  /** Squash the purse as coins land in it. */
+  pulseGold() {
+    const el = this.el.playerGold?.closest('.stat-gold');
+    if (!el) return;
+    el.classList.remove('is-bump');
+    void el.offsetWidth; // restart the animation
+    el.classList.add('is-bump');
   }
 
   renderBadges(player) {

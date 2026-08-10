@@ -187,6 +187,19 @@ export class SoundManager {
         this.tone({ freq: 1568, type: 'triangle', duration: 0.12, gain: 0.08, delay: 0.055 });
         break;
 
+      case 'coin': {
+        // One quiet tick per coin landing, climbing in pitch so a stream
+        // of them reads as a run rather than a smear.
+        const step = Math.min(opts.index ?? 0, 11);
+        this.tone({
+          freq: 1150 + step * 65,
+          type: 'triangle',
+          duration: 0.05,
+          gain: 0.045,
+        });
+        break;
+      }
+
       case 'buy':
         this.tone({ freq: 784, type: 'square', duration: 0.08, gain: 0.1 });
         this.tone({ freq: 1175, type: 'square', duration: 0.12, gain: 0.08, delay: 0.06 });

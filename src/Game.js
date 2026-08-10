@@ -10,7 +10,7 @@ import { BattlefieldView } from './rendering/BattlefieldView.js';
 import { Effects } from './rendering/Effects.js';
 import { InputManager } from './input/InputManager.js';
 import { Tweens } from './core/Tween.js';
-import { BOARD, TIME, SHAKE } from './core/config.js';
+import { BOARD, TIME, SHAKE, DESIGN } from './core/config.js';
 import { getUnit } from './data/units.js';
 
 /**
@@ -123,6 +123,7 @@ export class Game {
     this.stats.highestUnit = this.board.highestLevel();
 
     this.boardView.syncAll(this.board.tiles());
+    this.ui.goldHold = false;
     this.ui.updatePlayer(this.player, this.score);
     this.ui.setHudVisible(true);
     this.ui.showHint();
@@ -301,16 +302,24 @@ export class Game {
     this.stats.goldEarned += rewards.gold;
     this.score += 25 * floor + (wasBoss ? 150 * floor : 0);
 
+    // The gold is banked in state now, but the readout stays put until the
+    // dropped coins actually reach the purse.
+    const goldBefore = this.player.gold - rewards.gold;
+    this.ui.goldHold = true;
+    this.ui.setGoldDisplay(goldBefore);
+
     this.sound.play('enemyDeath');
     this.renderer.shake.add(wasBoss ? SHAKE.bossDeath : SHAKE.enemyDeath, 7);
 
     const anchor = this.battlefield.enemyAnchor();
+    // Loot bursts out *with* the death explosion rather than queueing behind
+    // it, so the two beats overlap and the payoff lands sooner.
+    const goldFlight = this.collectGold(anchor, rewards.gold, goldBefore);
+
     await this.battlefield.die({ boss: wasBoss });
     if (!alive()) return;
 
-    this.effects.rewardPop(anchor.x - 44, anchor.y, rewards.gold, 'gold');
-    this.effects.rewardPop(anchor.x + 44, anchor.y - 18, rewards.xp, 'xp');
-    this.sound.play('gold');
+    this.effects.rewardPop(anchor.x + 42, anchor.y - 10, rewards.xp, 'xp');
     this.ui.toast(`Floor ${floor} cleared!`, 'good');
     this.ui.updatePlayer(this.player, this.score);
 
@@ -318,6 +327,9 @@ export class Game {
       this.effects.celebrate(anchor.x, anchor.y);
       this.sound.play('victory');
     }
+
+    await goldFlight;
+    if (!alive()) return;
 
     if (!(await this.tweens.wait(TIME.victoryBeat)) || !alive()) return;
 
@@ -332,6 +344,45 @@ export class Game {
     }
 
     await this.spawnNextEnemy();
+  }
+
+  /**
+   * Loot pickup: coins burst from the corpse, fly into the HUD purse, and
+   * the counter climbs as they land.
+   *
+   * @param {{x:number,y:number}} from world position of the kill
+   * @param {number} amount gold awarded
+   * @param {number} goldBefore the player's gold before this reward
+   */
+  async collectGold(from, amount, goldBefore) {
+    const screen = this.ui.goldAnchor();
+    const to = screen
+      ? this.renderer.screenToWorld(screen.x, screen.y)
+      : { x: 0, y: -DESIGN.height / 2 + 46 };
+
+    // Each coin credits its own share as it lands, so the number climbs in
+    // lockstep with the coins and stays monotonic — no separate tween that
+    // could race the flight and make the total jump around.
+    let credited = 0;
+
+    await this.effects.goldBurst(from, to, amount, {
+      onFirst: () => {
+        this.sound.play('gold');
+        this.ui.pulseGold();
+        this.effects.damageNumber(to.x, to.y + 26, amount, { kind: 'gold', prefix: '+' });
+      },
+      onCoin: (landed, total) => {
+        // Rounding by cumulative share puts the remainder on the last coin.
+        const share = Math.round((amount * landed) / total) - credited;
+        credited += share;
+        this.ui.setGoldDisplay(goldBefore + credited);
+        this.sound.play('coin', { index: landed - 1 });
+        if (landed === total) this.ui.pulseGold();
+      },
+    });
+
+    this.ui.goldHold = false;
+    this.ui.setGoldDisplay(this.player.gold);
   }
 
   async presentLevelUp() {
