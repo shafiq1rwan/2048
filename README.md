@@ -192,3 +192,7 @@ example, is CC-BY 4.0) require attribution.
   to soften all of it at once, or set it to `0` to turn shake off completely.
 - Layout: `DESIGN`, `BOARD` and `SCENE` in `core/config.js` (the comment there
   documents the vertical budget).
+- Corner rounding: `BOARD.cornerRadius` sets the cells; the frame derives
+  `cornerRadius + padding` so its corner stays concentric with them. Radii are
+  written in design units and converted to each texture's resolution in
+  `BoardView.js`, so changing cell size or padding keeps the corners aligned.

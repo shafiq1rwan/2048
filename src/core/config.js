@@ -26,6 +26,12 @@ export const BOARD = {
   centerY: -146,
   /** Padding between the outermost cells and the board frame. */
   padding: 13,
+  /**
+   * Corner radius of a cell (slot and tile plate), in design units.
+   * The frame derives its own radius as `cornerRadius + padding` so the
+   * outer corner stays concentric with the cells it encloses.
+   */
+  cornerRadius: 17,
 };
 
 /** Distance between the centres of two neighbouring cells. */

@@ -81,6 +81,9 @@ export function tilePlateTexture({ fill, edge, size = 192, radius = 30 }) {
     const ctx = canvas.getContext('2d');
     const outline = 11;
     const inset = 5;
+    // Each nested layer sheds exactly its own inset, keeping the corners
+    // concentric with the outer edge.
+    const step = (extra) => Math.max(2, radius - extra);
 
     // dark outline
     ctx.fillStyle = '#141728';
@@ -95,23 +98,25 @@ export function tilePlateTexture({ fill, edge, size = 192, radius = 30 }) {
       inset + 4,
       size - (inset + 4) * 2,
       size - (inset + 4) * 2,
-      radius - 4,
+      step(4),
     );
     ctx.fill();
 
     // body gradient
     const bodyInset = inset + outline;
+    const bodySize = size - bodyInset * 2;
+    const bodyRadius = step(outline);
     const grad = ctx.createLinearGradient(0, bodyInset, 0, size - bodyInset);
     grad.addColorStop(0, shade(fill, 0.16));
     grad.addColorStop(0.55, fill);
     grad.addColorStop(1, shade(fill, -0.16));
     ctx.fillStyle = grad;
-    roundRectPath(ctx, bodyInset, bodyInset, size - bodyInset * 2, size - bodyInset * 2, radius - 9);
+    roundRectPath(ctx, bodyInset, bodyInset, bodySize, bodySize, bodyRadius);
     ctx.fill();
 
     // top sheen
     ctx.save();
-    roundRectPath(ctx, bodyInset, bodyInset, size - bodyInset * 2, size - bodyInset * 2, radius - 9);
+    roundRectPath(ctx, bodyInset, bodyInset, bodySize, bodySize, bodyRadius);
     ctx.clip();
     const sheen = ctx.createLinearGradient(0, bodyInset, 0, bodyInset + size * 0.3);
     sheen.addColorStop(0, 'rgba(255,255,255,0.26)');
@@ -140,32 +145,43 @@ export function slotTexture({ size = 192, radius = 30 } = {}) {
   });
 }
 
-/** The wooden panel the whole grid sits on. */
-export function boardFrameTexture({ width = 512, height = 512, radius = 40 } = {}) {
-  return memo(`frame:${width}:${height}:${radius}`, () => {
-    const canvas = makeCanvas(width, height);
+/**
+ * The wooden panel the whole grid sits on.
+ *
+ * `radius` is the outer corner radius in texture pixels. Every nested
+ * shape steps its radius down by exactly its own inset, so all the
+ * curves stay concentric instead of drifting apart at the corners.
+ */
+export function boardFrameTexture({ size = 512, radius = 32 } = {}) {
+  return memo(`frame:${size}:${radius}`, () => {
+    const canvas = makeCanvas(size, size);
     const ctx = canvas.getContext('2d');
+    const pad = 8; // keeps the outline stroke inside the canvas
+    const bevel = 12; // inset of the inner highlight from the outer edge
+    const step = (inset) => Math.max(2, radius - inset);
 
+    // drop shadow, nudged down
     ctx.fillStyle = 'rgba(10,12,22,0.42)';
-    roundRectPath(ctx, 10, 14, width - 20, height - 20, radius);
+    roundRectPath(ctx, pad + 2, pad + 6, size - (pad + 2) * 2, size - (pad + 2) * 2, step(2));
     ctx.fill();
 
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    const grad = ctx.createLinearGradient(0, pad, 0, size - pad);
     grad.addColorStop(0, '#6b4630');
     grad.addColorStop(0.5, '#573726');
     grad.addColorStop(1, '#3d2618');
     ctx.fillStyle = grad;
-    roundRectPath(ctx, 8, 8, width - 16, height - 20, radius);
+    roundRectPath(ctx, pad, pad, size - pad * 2, size - pad * 2, radius);
     ctx.fill();
 
     ctx.strokeStyle = '#2a1a11';
     ctx.lineWidth = 8;
-    roundRectPath(ctx, 8, 8, width - 16, height - 20, radius);
+    roundRectPath(ctx, pad, pad, size - pad * 2, size - pad * 2, radius);
     ctx.stroke();
 
     ctx.strokeStyle = 'rgba(255,220,170,0.16)';
     ctx.lineWidth = 4;
-    roundRectPath(ctx, 20, 20, width - 40, height - 44, radius - 8);
+    const innerSize = size - (pad + bevel) * 2;
+    roundRectPath(ctx, pad + bevel, pad + bevel, innerSize, innerSize, step(bevel));
     ctx.stroke();
 
     return canvasTexture(canvas);

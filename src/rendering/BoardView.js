@@ -13,6 +13,27 @@ import { BOARD, GRID_EXTENT, SCENE, RENDER_LAYER, TIME, cellCenter } from '../co
 import { Ease } from '../core/Tween.js';
 
 /**
+ * Texture resolutions. These are authoring sizes only — each texture is
+ * scaled down to its design-unit footprint, so corner radii are
+ * specified in design units and converted here.
+ */
+const CELL_TEX = 192;
+const FRAME_TEX = 512;
+
+/** Outer extent of the board frame, in design units. */
+const FRAME_SIZE = GRID_EXTENT + BOARD.padding * 2;
+
+/** Cell corner radius, expressed in cell-texture pixels. */
+const CELL_RADIUS_TEX = (BOARD.cornerRadius * CELL_TEX) / BOARD.cell;
+
+/**
+ * Frame corner radius in frame-texture pixels. A corner sitting `padding`
+ * outside the cell corners has to be that much rounder to stay
+ * concentric with them.
+ */
+const FRAME_RADIUS_TEX = ((BOARD.cornerRadius + BOARD.padding) * FRAME_TEX) / FRAME_SIZE;
+
+/**
  * Visual representation of one board tile: plate, unit sprite, level
  * label and (for ascended units) a golden aura and star pips.
  */
@@ -83,7 +104,12 @@ class TileView extends THREE.Group {
     const def = getUnit(level);
     this.def = def;
 
-    this.plateMaterial.map = tilePlateTexture({ fill: def.tint, edge: def.edge });
+    this.plateMaterial.map = tilePlateTexture({
+      fill: def.tint,
+      edge: def.edge,
+      size: CELL_TEX,
+      radius: CELL_RADIUS_TEX,
+    });
     this.plateMaterial.needsUpdate = true;
 
     // unit sprite
@@ -185,23 +211,22 @@ export class BoardView {
   }
 
   buildFrame() {
-    const size = GRID_EXTENT + BOARD.padding * 2;
     const material = new THREE.MeshBasicMaterial({
-      map: boardFrameTexture({ width: 512, height: 512, radius: 40 }),
+      map: boardFrameTexture({ size: FRAME_TEX, radius: FRAME_RADIUS_TEX }),
       transparent: true,
       depthTest: false,
       depthWrite: false,
     });
     this.frame = new THREE.Mesh(UNIT_PLANE, material);
     this.frame.renderOrder = RENDER_LAYER.boardFrame;
-    this.frame.scale.set(size, size, 1);
+    this.frame.scale.set(FRAME_SIZE, FRAME_SIZE, 1);
     this.frame.position.set(0, BOARD.centerY, 0);
     this.root.add(this.frame);
   }
 
   buildSlots() {
     const material = new THREE.MeshBasicMaterial({
-      map: slotTexture(),
+      map: slotTexture({ size: CELL_TEX, radius: CELL_RADIUS_TEX }),
       transparent: true,
       depthTest: false,
       depthWrite: false,
