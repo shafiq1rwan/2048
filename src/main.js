@@ -17,11 +17,21 @@ function registerServiceWorker() {
   });
 }
 
+/** True when the game is running as an installed app already. */
+function runningStandalone() {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true // iOS Safari
+  );
+}
+
 /**
  * Chrome fires this instead of showing its own install UI. Stash the event
- * so the title screen can offer an Install button.
+ * so the title screen can offer an Install button — but never inside the
+ * installed app itself, and drop it the moment installation completes.
  */
 function watchInstallPrompt(ui) {
+  if (runningStandalone()) return;
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     ui.setInstallPrompt(event);

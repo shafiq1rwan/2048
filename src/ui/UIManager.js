@@ -353,8 +353,13 @@ export class UIManager {
     return `<img class="${className}" src="${this.assets.url(key)}" alt=""${style} />`;
   }
 
-  /** @param {string} [modifier] theme class, e.g. 'is-shop' / 'is-levelup' */
-  openPanel(html, modifier = '') {
+  /**
+   * @param {string} [modifier] theme class, e.g. 'is-shop' / 'is-levelup'
+   * @param {{fullscreen?: boolean}} [opts] fullscreen drops the dialog
+   *        framing and lets the panel own the whole viewport (title)
+   */
+  openPanel(html, modifier = '', { fullscreen = false } = {}) {
+    this.el.overlay.classList.toggle('is-fullscreen', fullscreen);
     this.el.overlay.innerHTML = `<div class="panel ${modifier}">${html}</div>`;
     this.el.overlay.classList.remove('hidden');
     return this.el.overlay.firstElementChild;
@@ -382,6 +387,7 @@ export class UIManager {
 
   closePanel() {
     this.el.overlay.classList.add('hidden');
+    this.el.overlay.classList.remove('is-fullscreen');
     this.el.overlay.innerHTML = '';
     this.keyChoices = null;
   }
@@ -451,8 +457,8 @@ export class UIManager {
   /** Stash (or clear) a deferred browser install prompt. */
   setInstallPrompt(event) {
     this.installPrompt = event;
-    const row = document.getElementById('install-row');
-    if (row) row.hidden = !event;
+    const btn = document.getElementById('btn-install');
+    if (btn) btn.hidden = !event;
   }
 
   /**
@@ -496,29 +502,34 @@ export class UIManager {
 
     const panel = this.openPanel(
       `
-      <div class="title-hero">
-        <h1 class="title-main">MERGE KNIGHTS</h1>
-        <p class="title-tag">2048 &times; fantasy RPG</p>
-      </div>
+      <div class="title-inner">
+        <div class="title-hero">
+          <h1 class="title-main">MERGE KNIGHTS</h1>
+          <p class="title-tag">2048 &times; fantasy RPG</p>
+        </div>
 
-      ${this.mergeDemoHtml()}
+        <div class="title-body">
+          <div class="title-card">
+            ${this.mergeDemoHtml()}
+          </div>
 
-      <ul class="how-to">
-        <li>${this.iconImg('icon_arrow_up', 'ht-icon')}<span>Slide with <b>WASD</b>, <b>arrows</b> or <b>swipe</b></span></li>
-        <li>${this.iconImg('icon_swords', 'ht-icon')}<span>Bigger merges hit <b>far</b> harder</span></li>
-        <li>${this.iconImg('icon_shield', 'ht-icon')}<span>A <b>boss</b> guards every ${BOSS_EVERY}th floor</span></li>
-      </ul>
+          <ul class="how-to">
+            <li>${this.iconImg('icon_arrow_up', 'ht-icon')}<span>Slide with <b>WASD</b>, <b>arrows</b> or <b>swipe</b></span></li>
+            <li>${this.iconImg('icon_swords', 'ht-icon')}<span>Bigger merges hit <b>far</b> harder &mdash; chain them for <b>combos</b></span></li>
+            <li>${this.iconImg('icon_shield', 'ht-icon')}<span>A <b>boss</b> guards every ${BOSS_EVERY}th floor</span></li>
+          </ul>
 
-      ${records}
+          ${records}
+        </div>
 
-      <div class="btn-row">
-        <button class="btn btn-hero" id="btn-start">&#9876; Start Run</button>
-      </div>
-      <div class="btn-row" id="install-row"${this.installPrompt ? '' : ' hidden'}>
-        <button class="btn ghost btn-install" id="btn-install">&#8681; Install app</button>
+        <div class="title-actions">
+          <button class="btn btn-hero" id="btn-start">&#9876; Start Run</button>
+          <button class="btn ghost btn-install" id="btn-install"${this.installPrompt ? '' : ' hidden'}>&#8681; Install app</button>
+        </div>
       </div>
     `,
       'is-title',
+      { fullscreen: true },
     );
 
     return new Promise((resolve) => {
