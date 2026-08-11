@@ -27,6 +27,16 @@ const FX_SHEETS = {
     image: 'fx_dust_big',
     frameW: 64, frameH: 64, cols: 10, rows: 1, row: 0, frames: 10, fps: 22,
   },
+  // One-shot fire bursts: ignite -> bloom -> smoke out. Pack art, so
+  // they read in the same style as everything else on the board.
+  fireBurst: {
+    image: 'fx_fire_burst',
+    frameW: 64, frameH: 64, cols: 10, rows: 1, row: 0, frames: 10, fps: 18,
+  },
+  fireSmall: {
+    image: 'fx_fire_small',
+    frameW: 64, frameH: 64, cols: 8, rows: 1, row: 0, frames: 8, fps: 16,
+  },
   // From CodeManu's public-domain Free Pixel Effects Pack (100px grid).
   // Multi-row sheets play one full-cycle row — the animator is per-row.
   freezing: {
@@ -36,10 +46,6 @@ const FX_SHEETS = {
   phantom: {
     image: 'fx_phantom',
     frameW: 100, frameH: 100, cols: 8, rows: 8, row: 2, frames: 8, fps: 12,
-  },
-  flame: {
-    image: 'fx_flame',
-    frameW: 100, frameH: 100, cols: 8, rows: 8, row: 0, frames: 8, fps: 12,
   },
 };
 

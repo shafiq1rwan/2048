@@ -659,20 +659,18 @@ export class Game {
     });
   }
 
-  /** Goblin strike: a wave of flames sweeps across the board. */
+  /** Goblin strike: a wave of fire bursts sweeps across the board. */
   async goblinFlameWave() {
     this.sound.play('flames');
     for (let col = 0; col < BOARD.size; col++) {
       const at = cellCenter(Math.floor(Math.random() * BOARD.size), col);
       this.tweens.after(col * 95, () => {
-        this.effects.playSheet('flame', at.x, at.y + 8, {
-          size: BOARD.cell * 1.2,
-          additive: true,
-        });
+        this.effects.playSheet('fireBurst', at.x, at.y + 6, { size: BOARD.cell * 1.15 });
+        this.effects.glowPulse(at.x, at.y, { size: BOARD.cell * 1.5, color: '#ff9a40', duration: 340 });
         this.effects.sparks(at.x, at.y, { count: 4, color: '#ffb060', speed: 150, size: 10, life: 0.4 });
       });
     }
-    await this.tweens.wait(BOARD.size * 95 + 320);
+    await this.tweens.wait(BOARD.size * 95 + 420);
   }
 
   /**
@@ -697,10 +695,9 @@ export class Game {
       const rubble = this.board.addRubble(cell.row, cell.col, 4);
       if (rubble) {
         this.boardView.addTile(rubble);
-        // the crater smoulders for a beat (CodeManu FX pack)
-        this.effects.playSheet('flame', to.x, to.y + BOARD.cell * 0.24, {
-          size: BOARD.cell * 0.9,
-          additive: true,
+        // the crater smoulders for a beat
+        this.effects.playSheet('fireSmall', to.x, to.y + BOARD.cell * 0.18, {
+          size: BOARD.cell * 0.75,
         });
         if (!this.rubbleExplained) {
           this.rubbleExplained = true;

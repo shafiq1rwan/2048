@@ -4,4 +4,4 @@ https://codemanu.itch.io/pixelart-effect-pack
 Public domain: "This is a public domain asset, you can use it for both
 personal and comercial purposes. No credit required."
 
-Sheets used: 11_fire, 14_phantom, 19_freezing (100x100px frames).
+Sheets used: 14_phantom, 19_freezing (100x100px frames).

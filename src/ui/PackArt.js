@@ -17,6 +17,13 @@ const RIBBON = {
   rowH: 128,
   top: 20,
   h: 103,
+  /**
+   * The middle cloth (y 22..110, centre 66) is shorter than the
+   * drooping tails (y 20..122, centre 71.5). Text centres on the
+   * element, so the composition shifts down by the difference to put
+   * the cloth's centre at the element's centre.
+   */
+  clothShift: (71.5 - 66) / 103,
   left: { x: 30, w: 98 },
   mid: { x: 192, w: 64 },
   right: { x: 320, w: 97 },
@@ -47,12 +54,13 @@ export function ribbonDataUrl(image, { row = RIBBON_ROW.navy, width = 360, heigh
   const lw = Math.round(RIBBON.left.w * scale);
   const rw = Math.round(RIBBON.right.w * scale);
   const mw = Math.max(1, Math.round(RIBBON.mid.w * scale));
+  const dy = Math.round(canvas.height * RIBBON.clothShift);
 
   // Tile the middle first so its seams end up hidden under the tails.
   for (let x = lw - 4; x < canvas.width - rw + 4; x += mw) {
-    ctx.drawImage(image, RIBBON.mid.x, sy, RIBBON.mid.w, RIBBON.h, x, 0, mw, canvas.height);
+    ctx.drawImage(image, RIBBON.mid.x, sy, RIBBON.mid.w, RIBBON.h, x, dy, mw, canvas.height);
   }
-  ctx.drawImage(image, RIBBON.left.x, sy, RIBBON.left.w, RIBBON.h, 0, 0, lw, canvas.height);
+  ctx.drawImage(image, RIBBON.left.x, sy, RIBBON.left.w, RIBBON.h, 0, dy, lw, canvas.height);
   ctx.drawImage(
     image,
     RIBBON.right.x,
@@ -60,7 +68,7 @@ export function ribbonDataUrl(image, { row = RIBBON_ROW.navy, width = 360, heigh
     RIBBON.right.w,
     RIBBON.h,
     canvas.width - rw,
-    0,
+    dy,
     rw,
     canvas.height,
   );
