@@ -76,21 +76,26 @@ export function ribbonDataUrl(image, { row = RIBBON_ROW.navy, width = 360, heigh
 }
 
 /**
- * Papers/SpecialPaper.png — 320x320, a dark slate panel with gold
- * filigree corners, stored as nine blocks with gutters.
+ * Papers/SpecialPaper.png — 320x320, a dark slate panel stored as nine
+ * blocks with gutters. The art's gold trim and filigree decorate only
+ * the TOP and LEFT pieces, so compositions mirror those pieces onto
+ * the right and bottom — otherwise the outline looks incomplete.
  */
 const PAPER = {
-  cols: [
-    { x: 9, w: 55 },
-    { x: 128, w: 64 },
-    { x: 256, w: 55 },
-  ],
-  rows: [
-    { y: 20, h: 44 },
-    { y: 128, h: 64 },
-    { y: 256, h: 43 },
-  ],
+  corner: { x: 9, y: 20, w: 55, h: 44 },
+  topEdge: { x: 128, y: 20, w: 64, h: 44 },
+  leftEdge: { x: 10, y: 128, w: 54, h: 64 },
+  center: { x: 128, y: 128, w: 64, h: 64 },
 };
+
+/** drawImage with optional mirroring into the destination rect. */
+function drawPiece(ctx, image, src, dx, dy, dw, dh, flipX = false, flipY = false) {
+  ctx.save();
+  ctx.translate(flipX ? dx + dw : dx, flipY ? dy + dh : dy);
+  ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+  ctx.drawImage(image, src.x, src.y, src.w, src.h, 0, 0, dw, dh);
+  ctx.restore();
+}
 
 /**
  * Compose the paper panel at an exact pixel size. Done per element
@@ -109,28 +114,29 @@ export function paperDataUrl(image, { width, height, edge = 20, ratio = 2 } = {}
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  const s = (edge / PAPER.cols[0].w) * ratio;
-  const xs = [0, Math.round(PAPER.cols[0].w * s), canvas.width - Math.round(PAPER.cols[2].w * s)];
-  const ys = [0, Math.round(PAPER.rows[0].h * s), canvas.height - Math.round(PAPER.rows[2].h * s)];
-  const ws = [xs[1], xs[2] - xs[1], canvas.width - xs[2]];
-  const hs = [ys[1], ys[2] - ys[1], canvas.height - ys[2]];
+  const s = (edge / PAPER.corner.w) * ratio;
+  const cw = Math.round(PAPER.corner.w * s);
+  const ch = Math.round(PAPER.corner.h * s);
+  const ew = Math.round(PAPER.leftEdge.w * s);
+  const W = canvas.width;
+  const H = canvas.height;
+  const midW = W - cw * 2;
+  const midH = H - ch * 2;
 
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      if (ws[c] <= 0 || hs[r] <= 0) continue;
-      ctx.drawImage(
-        image,
-        PAPER.cols[c].x,
-        PAPER.rows[r].y,
-        PAPER.cols[c].w,
-        PAPER.rows[r].h,
-        xs[c],
-        ys[r],
-        ws[c],
-        hs[r],
-      );
-    }
+  // centre fill first, then edges, corners last so the filigree wins
+  drawPiece(ctx, image, PAPER.center, ew, ch, W - ew * 2, H - ch * 2);
+  if (midW > 0) {
+    drawPiece(ctx, image, PAPER.topEdge, cw, 0, midW, ch);
+    drawPiece(ctx, image, PAPER.topEdge, cw, H - ch, midW, ch, false, true);
   }
+  if (midH > 0) {
+    drawPiece(ctx, image, PAPER.leftEdge, 0, ch, ew, midH);
+    drawPiece(ctx, image, PAPER.leftEdge, W - ew, ch, ew, midH, true, false);
+  }
+  drawPiece(ctx, image, PAPER.corner, 0, 0, cw, ch);
+  drawPiece(ctx, image, PAPER.corner, W - cw, 0, cw, ch, true, false);
+  drawPiece(ctx, image, PAPER.corner, 0, H - ch, cw, ch, false, true);
+  drawPiece(ctx, image, PAPER.corner, W - cw, H - ch, cw, ch, true, true);
   return canvas.toDataURL();
 }
 

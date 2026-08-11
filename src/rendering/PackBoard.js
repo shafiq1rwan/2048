@@ -48,10 +48,11 @@ export function woodFrameTexture(assets, { size = 512, fallbackRadius = 30 } = {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  // Corner scale: keeps the carved rim about as thick as the board's
-  // padding ring, so the trim stays visible around the outer cells —
-  // chunky enough that the corner joinery still reads as woodwork.
-  const s = (size / 512) * 0.82;
+  // Corner scale: the rim must stay THINNER than the board's padding
+  // ring, so a strip of the dark play surface always separates rim from
+  // cells — a rim thicker than the padding ends exactly at the tile
+  // edges and reads as a ledge lying over the bottom row.
+  const s = (size / 512) * 0.34;
   const cw = [Math.round(TABLE.cols[0].w * s), 0, Math.round(TABLE.cols[2].w * s)];
   const rh = [Math.round(TABLE.rows[0].h * s), 0, Math.round(TABLE.rows[2].h * s)];
   const xs = [0, cw[0], size - cw[2]];

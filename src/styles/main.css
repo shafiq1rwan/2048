@@ -879,15 +879,21 @@ img {
   border: 2px solid rgba(255, 255, 255, 0.08);
 }
 
-/* pack paper replaces the flat card/list chrome when available */
+/* pack paper replaces the flat card/list chrome when available;
+   background-size restated because base `background:` shorthands
+   reset it (see the pause panel note) */
 .title-card.pack-paper {
   background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   border: none;
   border-radius: 0;
   padding: 16px 16px 4px;
 }
 
 .how-to.pack-paper {
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   padding: 12px 13px;
 }
 
@@ -1306,6 +1312,10 @@ img {
 .panel.is-pause.pack-paper {
   background-color: transparent;
   background-image: none; /* the composed art lands inline */
+  /* .panel's `background:` shorthand resets size to auto — restate it
+     here or the composed image renders cropped to its top-left */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   border: none;
   border-radius: 0;
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
