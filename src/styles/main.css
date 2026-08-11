@@ -1739,6 +1739,21 @@ body.pack-round .corner-btn:active {
     min-width: 64px;
     padding: 5px 9px;
   }
+  /* five stacked buttons now — tighten so the pause menu fits 380px */
+  .pause-menu {
+    gap: 6px;
+  }
+  .pause-menu .btn {
+    padding: 6px 16px;
+    font-size: 16px;
+  }
+  .panel.is-pause.pack-paper,
+  .panel.is-pause {
+    padding: 18px 22px 14px;
+  }
+  .panel.is-pause .keyhint {
+    display: none;
+  }
   .btn {
     padding: 10px 20px;
   }

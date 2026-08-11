@@ -180,6 +180,11 @@ State, rendering and input are separate: `board/`, `combat/` and
   `Terrain/Ground/Tilemap_Flat.png` into a repeating texture.
 - A missing file logs a warning and falls back to a flat colour placeholder,
   so the game always runs.
+- Music is synthesised too: `audio/Music.js` is a WebAudio chiptune
+  sequencer with two hand-written themes — a field loop and a driving boss
+  loop that takes over on boss floors. Notes live as data tables (16 steps a
+  bar), so composing new themes means writing arrays, not code. SFX and music
+  have separate toggles in the pause menu.
 - Sound is synthesised, because the pack contains no audio. `SoundManager.play(name)`
   is the single hook if you want to drop in real samples later. Each enemy
   family speaks in its own timbre (`voice` per roster entry in

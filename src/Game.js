@@ -26,12 +26,14 @@ export class Game {
    *          assets: import('./rendering/AssetManager.js').AssetManager,
    *          save: import('./core/SaveManager.js').SaveManager,
    *          sound: import('./audio/SoundManager.js').SoundManager,
+   *          music: import('./audio/Music.js').Music,
    *          ui: import('./ui/UIManager.js').UIManager}} deps
    */
-  constructor({ canvas, assets, save, sound, ui }) {
+  constructor({ canvas, assets, save, sound, music, ui }) {
     this.assets = assets;
     this.save = save;
     this.sound = sound;
+    this.music = music;
     this.ui = ui;
 
     // --- state -----------------------------------------------------
@@ -96,6 +98,7 @@ export class Game {
   async showTitle() {
     this.state = 'title';
     this.input.lock();
+    this.music.stop();
     this.ui.setHudVisible(false);
     await this.ui.showTitle();
     this.sound.unlock();
@@ -542,6 +545,9 @@ export class Game {
     const enemy = this.enemies.next();
     this.combat.resetCountdown(enemy);
     this.ui.setEnemy(enemy);
+    // the score follows the fight: driving loop for bosses, back to the
+    // field theme once a boss falls
+    this.music.start(enemy.isBoss ? 'boss' : 'field');
 
     if (enemy.isBoss) {
       this.sound.play('bossSpawn');
@@ -768,6 +774,7 @@ export class Game {
     this.state = 'over';
     this.input.lock();
 
+    this.music.stop();
     this.sound.play('gameOver');
     this.effects.screenFlash({ color: '#1a0d12', opacity: 0.5, duration: 700 });
     this.renderer.shake.add(SHAKE.gameOver, 5);

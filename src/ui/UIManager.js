@@ -24,12 +24,14 @@ export class UIManager {
   /**
    * @param {{assets: import('../rendering/AssetManager.js').AssetManager,
    *          save: import('../core/SaveManager.js').SaveManager,
-   *          sound: import('../audio/SoundManager.js').SoundManager}} deps
+   *          sound: import('../audio/SoundManager.js').SoundManager,
+   *          music: import('../audio/Music.js').Music}} deps
    */
-  constructor({ assets, save, sound }) {
+  constructor({ assets, save, sound, music }) {
     this.assets = assets;
     this.save = save;
     this.sound = sound;
+    this.music = music;
 
     this.el = {
       root: document.documentElement,
@@ -780,7 +782,9 @@ export class UIManager {
    */
   showPause() {
     const soundLabel = () =>
-      `&#9835; Sound: <b>${this.save.get('muted') ? 'Off' : 'On'}</b>`;
+      `&#9835; SFX: <b>${this.save.get('muted') ? 'Off' : 'On'}</b>`;
+    const musicLabel = () =>
+      `&#119070; Music: <b>${this.save.get('musicMuted') ? 'Off' : 'On'}</b>`;
 
     const panel = this.openPanel(
       `
@@ -792,6 +796,7 @@ export class UIManager {
       <div class="pause-menu">
         <button class="btn" id="btn-resume">&#9654; Resume</button>
         <button class="btn ghost" id="btn-sound-toggle">${soundLabel()}</button>
+        <button class="btn ghost" id="btn-music-toggle">${musicLabel()}</button>
         <button class="btn danger" id="btn-restart">&#8635; Restart Run</button>
         <button class="btn ghost" id="btn-quit">Title Screen</button>
       </div>
@@ -818,6 +823,14 @@ export class UIManager {
         this.sound.setMuted(muted);
         if (!muted) this.sound.play('buy');
         soundBtn.innerHTML = soundLabel();
+      });
+
+      const musicBtn = panel.querySelector('#btn-music-toggle');
+      musicBtn.addEventListener('click', () => {
+        const muted = !this.save.get('musicMuted');
+        this.save.set('musicMuted', muted);
+        this.music.setMuted(muted);
+        musicBtn.innerHTML = musicLabel();
       });
 
       panel.querySelector('#btn-resume').focus();

@@ -1,6 +1,7 @@
 import { AssetManager } from './rendering/AssetManager.js';
 import { SaveManager } from './core/SaveManager.js';
 import { SoundManager } from './audio/SoundManager.js';
+import { Music } from './audio/Music.js';
 import { UIManager } from './ui/UIManager.js';
 import { Game } from './Game.js';
 
@@ -48,6 +49,7 @@ async function main() {
 
   const save = new SaveManager();
   const sound = new SoundManager({ muted: save.get('muted') });
+  const music = new Music(sound, { muted: save.get('musicMuted') });
   const assets = new AssetManager();
 
   const loadingText = document.getElementById('loading-text');
@@ -58,7 +60,7 @@ async function main() {
     if (loadingText) loadingText.textContent = `Mustering troops… ${loaded}/${total}`;
   });
 
-  const ui = new UIManager({ assets, save, sound });
+  const ui = new UIManager({ assets, save, sound, music });
   if (assets.missing.size > 0) {
     ui.setLoadMessage(`${assets.missing.size} art files missing — using placeholders.`);
   }
@@ -66,7 +68,7 @@ async function main() {
   watchInstallPrompt(ui);
   registerServiceWorker();
 
-  const game = new Game({ canvas, assets, save, sound, ui });
+  const game = new Game({ canvas, assets, save, sound, music, ui });
   // Handy for poking at balance from the console.
   window.game = game;
 

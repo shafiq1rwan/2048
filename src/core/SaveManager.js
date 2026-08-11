@@ -7,6 +7,7 @@ const DEFAULTS = {
   mostBosses: 0,
   mostEnemies: 0,
   muted: false,
+  musicMuted: false,
 };
 
 /**
