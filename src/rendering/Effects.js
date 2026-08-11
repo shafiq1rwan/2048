@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { EffectSprite, UNIT_PLANE } from './SpriteAnimator.js';
-import { glowTexture, orbTexture, textTexture, starsTexture } from './Textures.js';
+import { EffectSprite, SpriteAnimator, UNIT_PLANE } from './SpriteAnimator.js';
+import { glowTexture, orbTexture, textTexture, starsTexture, shadowTexture } from './Textures.js';
 import { RENDER_LAYER, TIME } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
 import { FAMILY_FX } from '../data/enemies.js';
@@ -521,20 +521,51 @@ export class Effects {
   }
 
   /**
-   * A lobbed projectile on a ballistic arc — the goblin bomb. Resolves
-   * false if cancelled (restart) so callers can bail out.
+   * A stick of dynamite hurled onto the board: the pack's animated
+   * Dynamite sprite (sparking fuse) tumbles along a ballistic arc,
+   * scaling small -> big at the apex -> small again as it drops, while
+   * a shadow grows on the landing cell to telegraph where it hits.
+   * Falls back to a plain orb if the sprite is missing. Resolves false
+   * if cancelled (restart) so callers can bail out.
    *
    * @param {{x:number,y:number}} from
    * @param {{x:number,y:number}} to
    * @returns {Promise<boolean>}
    */
-  lob(from, to, { duration = 460, size = 34, arc = 130, color = '#5a5a6a' } = {}) {
-    const material = new THREE.MeshBasicMaterial({
-      map: orbTexture({ color }),
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-    });
+  lob(from, to, { duration = 520, size = 46, arc = 150, peak = 1.65 } = {}) {
+    const hasArt = !this.assets.missing.has('dynamite');
+    let fuse = null;
+    let material;
+    if (hasArt) {
+      const texture = this.assets.clone('dynamite');
+      const animator = new SpriteAnimator(texture, {
+        frameW: 64, frameH: 64, cols: 6, rows: 1, row: 0, frames: 6, fps: 16,
+      });
+      material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        alphaTest: 0.02,
+      });
+      // duck-typed into the sprite update list so the fuse keeps
+      // burning in flight; flagging `finished` hands disposal to the
+      // regular sprite lifecycle (which clear() also covers)
+      fuse = {
+        update: (dt) => animator.update(dt),
+        finished: false,
+        dispose: () => animator.dispose(),
+      };
+      this.sprites.push(fuse);
+    } else {
+      material = new THREE.MeshBasicMaterial({
+        map: orbTexture({ color: '#5a5a6a' }),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+      });
+    }
+
     const mesh = new THREE.Mesh(UNIT_PLANE, material);
     mesh.userData.ownMaterial = true;
     mesh.renderOrder = RENDER_LAYER.effect;
@@ -542,6 +573,23 @@ export class Effects {
     mesh.position.set(from.x, from.y, 0);
     this.root.add(mesh);
     this.transient.push(mesh);
+
+    // landing telegraph: a shadow swelling under the drop point
+    const shadow = new THREE.Mesh(
+      UNIT_PLANE,
+      new THREE.MeshBasicMaterial({
+        map: shadowTexture(),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        opacity: 0,
+      }),
+    );
+    shadow.userData.ownMaterial = true;
+    shadow.renderOrder = RENDER_LAYER.effect - 1;
+    shadow.position.set(to.x, to.y - 6, 0);
+    this.root.add(shadow);
+    this.transient.push(shadow);
 
     let trailTimer = 0;
     return new Promise((resolve) => {
@@ -551,11 +599,19 @@ export class Effects {
         onUpdate: (v, dtMs) => {
           mesh.position.x = from.x + (to.x - from.x) * v;
           mesh.position.y = from.y + (to.y - from.y) * v + arc * Math.sin(v * Math.PI);
-          mesh.rotation.z -= (dtMs ?? 16) * 0.012;
+          // "height": grows toward the apex, shrinks back into the board
+          const s = size * (0.5 + (peak - 0.5) * Math.sin(v * Math.PI));
+          mesh.scale.set(s, s, 1);
+          mesh.rotation.z -= (dtMs ?? 16) * 0.011;
+
+          const sw = 52 * (0.35 + 0.65 * v);
+          shadow.scale.set(sw, sw * 0.4, 1);
+          shadow.material.opacity = 0.38 * v;
+
           trailTimer += dtMs ?? 16;
-          if (trailTimer > 55) {
+          if (trailTimer > 60) {
             trailTimer = 0;
-            this.sparks(mesh.position.x, mesh.position.y, {
+            this.sparks(mesh.position.x, mesh.position.y + s * 0.3, {
               count: 1,
               color: '#ffb060',
               speed: 40,
@@ -565,11 +621,15 @@ export class Effects {
           }
         },
         onComplete: () => {
+          if (fuse) fuse.finished = true;
           this.removeTransient(mesh);
+          this.removeTransient(shadow);
           resolve(true);
         },
         onCancel: () => {
+          if (fuse) fuse.finished = true;
           this.removeTransient(mesh);
+          this.removeTransient(shadow);
           resolve(false);
         },
       });

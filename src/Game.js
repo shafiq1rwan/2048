@@ -687,7 +687,7 @@ export class Game {
     const to = cell ? cellCenter(cell.row, cell.col) : impact;
 
     this.sound.play('bomb');
-    if (!(await this.effects.lob(from, to, { duration: 480, arc: 150 }))) return false;
+    if (!(await this.effects.lob(from, to, { duration: 520, arc: 170 }))) return false;
 
     this.effects.playSheet('explosion', to.x, to.y, { size: 175 });
     this.effects.dust(to.x, to.y - 20, { size: 110, big: true });

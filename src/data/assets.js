@@ -51,6 +51,7 @@ export const IMAGES = {
   archer_black: { path: 'Units/Black Units/Archer/Archer_Idle.png', fallback: '#55596f' },
   archer_red: { path: 'Units/Red Units/Archer/Archer_Idle.png', fallback: '#c8564a' },
   monk_purple: { path: 'Units/Purple Units/Monk/Idle.png', fallback: '#b28ae0' },
+  dynamite: { path: 'Factions/Goblins/Troops/TNT/Dynamite/Dynamite.png', fallback: '#c04a4a' },
 
   // ---- effects ---------------------------------------------------
   fx_explosion: { path: 'Particle FX/Explosion_02.png', fallback: '#ffcf5a' },

@@ -311,10 +311,10 @@ export class SoundManager {
       }
 
       case 'bomb':
-        // fuse whistle down into a thump
-        this.tone({ freq: 1400, type: 'triangle', duration: 0.4, gain: 0.06, slideTo: 500 });
-        this.noise({ duration: 0.3, gain: 0.18, filterFreq: 480, sweepTo: 70, delay: 0.42 });
-        this.tone({ freq: 95, type: 'sawtooth', duration: 0.22, gain: 0.12, slideTo: 55, delay: 0.42 });
+        // fuse whistle down into a thump, timed to the dynamite landing
+        this.tone({ freq: 1400, type: 'triangle', duration: 0.45, gain: 0.06, slideTo: 500 });
+        this.noise({ duration: 0.3, gain: 0.18, filterFreq: 480, sweepTo: 70, delay: 0.5 });
+        this.tone({ freq: 95, type: 'sawtooth', duration: 0.22, gain: 0.12, slideTo: 55, delay: 0.5 });
         break;
 
       case 'volley':
