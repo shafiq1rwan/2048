@@ -88,10 +88,6 @@ export const IMAGES = {
     path: 'UI Elements/UI Elements/Wood Table/WoodTable.png',
     fallback: '#6b4630',
   },
-  ui_wood_slot: {
-    path: 'UI Elements/UI Elements/Wood Table/WoodTable_Slots.png',
-    fallback: '#3a2a1c',
-  },
   ui_ribbons: { path: 'UI Elements/UI Elements/Ribbons/BigRibbons.png', fallback: '#2f3556' },
   ui_paper: { path: 'UI Elements/UI Elements/Papers/SpecialPaper.png', fallback: '#3a4160' },
   ui_btn_round: {

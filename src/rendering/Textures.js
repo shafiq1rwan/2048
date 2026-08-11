@@ -134,11 +134,17 @@ export function slotTexture({ size = 192, radius = 30 } = {}) {
   return memo(`slot:${size}:${radius}`, () => {
     const canvas = makeCanvas(size, size);
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(12,14,28,0.58)';
+    // Opaque warm-dark recess: matches the wood table and hides
+    // whatever frame detail sits underneath the cell.
+    ctx.fillStyle = '#31221a';
     roundRectPath(ctx, 6, 6, size - 12, size - 12, radius);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 6;
+    roundRectPath(ctx, 9, 9, size - 18, size - 18, radius - 3);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,235,200,0.07)';
+    ctx.lineWidth = 4;
     roundRectPath(ctx, 8, 8, size - 16, size - 16, radius - 2);
     ctx.stroke();
     return canvasTexture(canvas);

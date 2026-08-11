@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { SpriteEntity, UNIT_PLANE } from './SpriteAnimator.js';
 import {
   tilePlateTexture,
+  slotTexture,
   glowTexture,
   textTexture,
   starsTexture,
 } from './Textures.js';
-import { woodFrameTexture, woodSlotTexture } from './PackBoard.js';
+import { woodFrameTexture } from './PackBoard.js';
 import { getUnit } from '../data/units.js';
 import { BOARD, GRID_EXTENT, SCENE, RENDER_LAYER, TIME, SHAKE, cellCenter } from '../core/config.js';
 import { Ease } from '../core/Tween.js';
@@ -338,8 +339,10 @@ export class BoardView {
   }
 
   buildSlots() {
+    // Procedural slots: translucent, so the wood grain shows through
+    // as a recess, and rounded to the same silhouette as the tiles.
     const material = new THREE.MeshBasicMaterial({
-      map: woodSlotTexture(this.assets, { size: CELL_TEX, fallbackRadius: CELL_RADIUS_TEX }),
+      map: slotTexture({ size: CELL_TEX, radius: CELL_RADIUS_TEX }),
       transparent: true,
       depthTest: false,
       depthWrite: false,

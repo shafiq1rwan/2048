@@ -1,4 +1,4 @@
-import { canvasTexture, makeCanvas, boardFrameTexture, slotTexture } from './Textures.js';
+import { canvasTexture, makeCanvas, boardFrameTexture } from './Textures.js';
 
 /**
  * Board chrome built from the pack's Wood Table art, so the 2048 grid
@@ -10,18 +10,30 @@ import { canvasTexture, makeCanvas, boardFrameTexture, slotTexture } from './Tex
  * measured from the file. The bottom band is taller than the top: it
  * carries the table's 3D base shadow.
  */
+/**
+ * Every border block carries the table's torn under-rim shading on its
+ * inner side; through the translucent slots it reads as black drips.
+ * All pieces are therefore cropped to their clean rim-only cores,
+ * anchored to the outer edge of each block (left col keeps x45.., the
+ * right col ends at its true edge 403, the bottom at 422 past the 3D
+ * base).
+ */
 const TABLE = {
   cols: [
-    { x: 44, w: 84 },
+    { x: 45, w: 56 },
     { x: 192, w: 64 },
-    { x: 320, w: 84 },
+    { x: 347, w: 56 },
   ],
   rows: [
-    { y: 43, h: 85 },
+    { y: 43, h: 56 },
     { y: 192, h: 64 },
-    { y: 320, h: 103 },
+    { y: 366, h: 56 },
   ],
 };
+
+/** Clean core of the centre block, used to fill the play surface. */
+const TABLE_FILL = { x: 198, y: 210, w: 52, h: 40 };
+
 
 /**
  * The full board frame as one composed texture.
@@ -50,41 +62,19 @@ export function woodFrameTexture(assets, { size = 512, fallbackRadius = 30 } = {
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       if (ws[c] <= 0 || hs[r] <= 0) continue;
-      ctx.drawImage(
-        image,
-        TABLE.cols[c].x,
-        TABLE.rows[r].y,
-        TABLE.cols[c].w,
-        TABLE.rows[r].h,
-        xs[c],
-        ys[r],
-        ws[c],
-        hs[r],
-      );
+      const src =
+        r === 1 && c === 1
+          ? { x: TABLE_FILL.x, y: TABLE_FILL.y, w: TABLE_FILL.w, h: TABLE_FILL.h }
+          : { x: TABLE.cols[c].x, y: TABLE.rows[r].y, w: TABLE.cols[c].w, h: TABLE.rows[r].h };
+      ctx.drawImage(image, src.x, src.y, src.w, src.h, xs[c], ys[r], ws[c], hs[r]);
     }
   }
-  return canvasTexture(canvas, { nearest: true });
-}
 
-/**
- * The recessed wood slot for empty cells — WoodTable_Slots.png is a
- * single 192px tile, the same resolution the cells render at.
- */
-export function woodSlotTexture(assets, { size = 192, fallbackRadius = 30 } = {}) {
-  if (assets.missing.has('ui_wood_slot')) {
-    return slotTexture({ size, radius: fallbackRadius });
-  }
-  const image = assets.get('ui_wood_slot').image;
-  const canvas = makeCanvas(size, size);
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(image, 0, 0, size, size);
-  // Deepen the recess: the raw slot tone sits too close to the table
-  // top, and empty cells need to read at a glance. source-atop keeps
-  // the wood grain while pushing it into shadow.
-  ctx.globalCompositeOperation = 'source-atop';
-  ctx.fillStyle = 'rgba(24, 14, 8, 0.42)';
-  ctx.fillRect(0, 0, size, size);
-  ctx.globalCompositeOperation = 'source-over';
+  // Calm the busy plank pattern inside the rim so the play surface
+  // reads as a recessed board and the translucent slots stay legible
+  // on top of it.
+  ctx.fillStyle = 'rgba(38, 22, 12, 0.36)';
+  ctx.fillRect(xs[1], ys[1], ws[1], hs[1]);
+
   return canvasTexture(canvas, { nearest: true });
 }
