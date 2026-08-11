@@ -83,7 +83,15 @@ export const IMAGES = {
   tower: { path: 'Factions/Knights/Buildings/Tower/Tower_Blue.png', fallback: '#5878b0' },
   house: { path: 'Factions/Knights/Buildings/House/House_Blue.png', fallback: '#8a5f3c' },
 
-  // ---- UI Elements: chrome (ribbons, paper panels, pause button) ---
+  // ---- UI Elements: chrome (ribbons, paper, wood table, buttons) ---
+  ui_wood_table: {
+    path: 'UI Elements/UI Elements/Wood Table/WoodTable.png',
+    fallback: '#6b4630',
+  },
+  ui_wood_slot: {
+    path: 'UI Elements/UI Elements/Wood Table/WoodTable_Slots.png',
+    fallback: '#3a2a1c',
+  },
   ui_ribbons: { path: 'UI Elements/UI Elements/Ribbons/BigRibbons.png', fallback: '#2f3556' },
   ui_paper: { path: 'UI Elements/UI Elements/Papers/SpecialPaper.png', fallback: '#3a4160' },
   ui_btn_round: {

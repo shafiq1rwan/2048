@@ -20,12 +20,16 @@ export const DESIGN = {
  */
 export const BOARD = {
   size: 4,
-  cell: 108,
+  cell: 104,
   gap: 10,
   /** World Y of the board's centre — keeps the frame clear of both HUDs. */
   centerY: -146,
-  /** Padding between the outermost cells and the board frame. */
-  padding: 13,
+  /**
+   * Padding between the outermost cells and the board frame. Sized so
+   * the Wood Table art's carved rim stays visible around the grid
+   * (the total frame stays 488: 4x104 + 3x10 + 2x21).
+   */
+  padding: 21,
   /**
    * Corner radius of a cell (slot and tile plate), in design units.
    * The frame derives its own radius as `cornerRadius + padding` so the
@@ -35,9 +39,9 @@ export const BOARD = {
 };
 
 /** Distance between the centres of two neighbouring cells. */
-export const CELL_PITCH = BOARD.cell + BOARD.gap; // 118
+export const CELL_PITCH = BOARD.cell + BOARD.gap; // 114
 /** Outer extent of the 4x4 grid of cells (not counting the frame). */
-export const GRID_EXTENT = BOARD.size * BOARD.cell + (BOARD.size - 1) * BOARD.gap; // 462
+export const GRID_EXTENT = BOARD.size * BOARD.cell + (BOARD.size - 1) * BOARD.gap; // 446
 
 export const SCENE = {
   /** World Y where the grass surface begins. */

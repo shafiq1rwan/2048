@@ -2,12 +2,11 @@ import * as THREE from 'three';
 import { SpriteEntity, UNIT_PLANE } from './SpriteAnimator.js';
 import {
   tilePlateTexture,
-  slotTexture,
-  boardFrameTexture,
   glowTexture,
   textTexture,
   starsTexture,
 } from './Textures.js';
+import { woodFrameTexture, woodSlotTexture } from './PackBoard.js';
 import { getUnit } from '../data/units.js';
 import { BOARD, GRID_EXTENT, SCENE, RENDER_LAYER, TIME, SHAKE, cellCenter } from '../core/config.js';
 import { Ease } from '../core/Tween.js';
@@ -326,7 +325,7 @@ export class BoardView {
 
   buildFrame() {
     const material = new THREE.MeshBasicMaterial({
-      map: boardFrameTexture({ size: FRAME_TEX, radius: FRAME_RADIUS_TEX }),
+      map: woodFrameTexture(this.assets, { size: FRAME_TEX, fallbackRadius: FRAME_RADIUS_TEX }),
       transparent: true,
       depthTest: false,
       depthWrite: false,
@@ -340,7 +339,7 @@ export class BoardView {
 
   buildSlots() {
     const material = new THREE.MeshBasicMaterial({
-      map: slotTexture({ size: CELL_TEX, radius: CELL_RADIUS_TEX }),
+      map: woodSlotTexture(this.assets, { size: CELL_TEX, fallbackRadius: CELL_RADIUS_TEX }),
       transparent: true,
       depthTest: false,
       depthWrite: false,
