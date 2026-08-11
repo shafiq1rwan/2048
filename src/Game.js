@@ -582,7 +582,8 @@ export class Game {
     } else if (result.blocked) {
       this.showBlocked(impact);
     } else {
-      this.showStrike(result, impact);
+      await this.showStrike(result, impact);
+      if (!alive()) return;
       landed = true;
     }
 
@@ -603,12 +604,21 @@ export class Game {
   }
 
   /**
-   * The blow lands on the army: damage reads big over the middle of the
-   * board while the board itself jolts and the units go airborne.
+   * The blow lands on the army: a family-flavoured prelude (arrow
+   * shower, flame sweep, plain impact) followed by the shared pain
+   * beat — big damage over the board, jolt, airborne units.
    */
-  showStrike(result, impact) {
+  async showStrike(result, impact) {
+    const family = this.enemy?.voice;
+    if (family === 'archer') {
+      await this.archerVolley();
+    } else if (family === 'goblin') {
+      await this.goblinFlameWave();
+    } else {
+      this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
+    }
+
     this.sound.play('playerHit');
-    this.effects.playSheet('impact', impact.x, impact.y, { size: 190 });
     this.effects.screenFlash({ color: '#ff4a3a', opacity: 0.32, duration: 300 });
     this.effects.damageNumber(0, BOARD.centerY + 36, result.dealt, {
       kind: 'player',
@@ -626,6 +636,43 @@ export class Game {
       life: 0.5,
     });
     this.renderer.shake.add(SHAKE.playerHit, 6.5);
+  }
+
+  /** Archer strike: a volley of arrows rains down across the board. */
+  async archerVolley() {
+    this.sound.play('volley');
+    const points = [];
+    const taken = new Set();
+    while (points.length < 6) {
+      const row = Math.floor(Math.random() * BOARD.size);
+      const col = Math.floor(Math.random() * BOARD.size);
+      const key = row * BOARD.size + col;
+      if (taken.has(key)) continue;
+      taken.add(key);
+      points.push(cellCenter(row, col));
+    }
+    await this.effects.volley(points, {
+      onLand: (p) => {
+        this.effects.dust(p.x, p.y - 12, { size: 44 });
+        this.effects.sparks(p.x, p.y, { count: 3, color: '#e0d0a8', speed: 130, size: 8, life: 0.3 });
+      },
+    });
+  }
+
+  /** Goblin strike: a wave of flames sweeps across the board. */
+  async goblinFlameWave() {
+    this.sound.play('flames');
+    for (let col = 0; col < BOARD.size; col++) {
+      const at = cellCenter(Math.floor(Math.random() * BOARD.size), col);
+      this.tweens.after(col * 95, () => {
+        this.effects.playSheet('flame', at.x, at.y + 8, {
+          size: BOARD.cell * 1.2,
+          additive: true,
+        });
+        this.effects.sparks(at.x, at.y, { count: 4, color: '#ffb060', speed: 150, size: 10, life: 0.4 });
+      });
+    }
+    await this.tweens.wait(BOARD.size * 95 + 320);
   }
 
   /**

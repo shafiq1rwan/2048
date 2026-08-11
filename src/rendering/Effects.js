@@ -395,6 +395,65 @@ export class Effects {
   }
 
   /**
+   * A volley of projectiles raining steeply down onto board positions —
+   * the archer's strike. Each shot staggers behind the last and calls
+   * `onLand` where it hits. One tween per shot (no timers), so a
+   * restart cancels everything cleanly and the promise still settles.
+   *
+   * @param {Array<{x:number,y:number}>} points landing spots
+   * @returns {Promise<boolean>} true when every shot landed
+   */
+  volley(points, { color = '#e0d0a8', width = 7, length = 48, flight = 240, stagger = 55, onLand } = {}) {
+    const jobs = points.map(
+      (p, i) =>
+        new Promise((resolve) => {
+          const delay = i * stagger;
+          const total = delay + flight;
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const from = { x: p.x + side * rand(24, 70), y: p.y + rand(470, 560) };
+          const angle = Math.atan2(p.y - from.y, p.x - from.x);
+
+          const mesh = new THREE.Mesh(UNIT_PLANE, this.glowMaterial(color).clone());
+          mesh.userData.ownMaterial = true;
+          mesh.renderOrder = RENDER_LAYER.effect;
+          mesh.rotation.z = angle;
+          mesh.scale.set(length, width, 1);
+          mesh.visible = false;
+          this.root.add(mesh);
+          this.transient.push(mesh);
+
+          let landed = false;
+          this.tweens.add({
+            duration: total,
+            ease: Ease.linear,
+            onUpdate: (v) => {
+              const t = (v * total - delay) / flight;
+              if (t < 0) return;
+              mesh.visible = true;
+              const k = Math.pow(Math.min(1, t), 1.35); // gains speed as it falls
+              mesh.position.x = from.x + (p.x - from.x) * k;
+              mesh.position.y = from.y + (p.y - from.y) * k;
+              if (t >= 1 && !landed) {
+                landed = true;
+                mesh.visible = false;
+                onLand?.(p, i);
+              }
+            },
+            onComplete: () => {
+              this.removeTransient(mesh);
+              resolve(true);
+            },
+            onCancel: () => {
+              this.removeTransient(mesh);
+              resolve(false);
+            },
+          });
+        }),
+    );
+    return Promise.all(jobs).then((results) => results.every(Boolean));
+  }
+
+  /**
    * Floating damage number.
    * @param {'enemy'|'player'|'heal'|'gold'|'xp'} kind
    */

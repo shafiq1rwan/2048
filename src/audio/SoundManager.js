@@ -317,6 +317,30 @@ export class SoundManager {
         this.tone({ freq: 95, type: 'sawtooth', duration: 0.22, gain: 0.12, slideTo: 55, delay: 0.42 });
         break;
 
+      case 'volley':
+        // a flight of arrows whistling down, one after another
+        [0, 0.06, 0.13, 0.19, 0.26].forEach((delay) => {
+          this.tone({
+            freq: 1900 - delay * 1400,
+            type: 'triangle',
+            duration: 0.18,
+            gain: 0.045,
+            slideTo: 700,
+            delay,
+          });
+        });
+        this.noise({ duration: 0.3, gain: 0.05, filterFreq: 5200, type: 'highpass' });
+        break;
+
+      case 'flames':
+        // rolling fire: low whoosh with crackle on top
+        this.noise({ duration: 0.55, gain: 0.16, filterFreq: 900, sweepTo: 260 });
+        this.tone({ freq: 120, type: 'sawtooth', duration: 0.4, gain: 0.07, slideTo: 70 });
+        [0.06, 0.16, 0.28, 0.4].forEach((delay) => {
+          this.noise({ duration: 0.05, gain: 0.07, filterFreq: 2600, type: 'bandpass', delay });
+        });
+        break;
+
       case 'freeze':
         // glassy descending shimmer
         [1760, 1320, 990].forEach((freq, i) => {
