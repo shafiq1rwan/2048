@@ -5,14 +5,18 @@ import { SCENE, RENDER_LAYER, TIME, DESIGN, SHAKE } from '../core/config.js';
 import { Ease, rand } from '../core/Tween.js';
 import { FAMILY_FX } from '../data/enemies.js';
 
-/** Where each piece of scenery stands. x is mirrored for |x| > design edge. */
+/**
+ * Where each piece of scenery stands. The buildings flank the enemy on
+ * the horizon as proper landmarks — clear of the tree lines at the
+ * edges, which used to stand at almost the same x and swallow them.
+ */
 const DECOR = [
-  { key: 'tower', x: -232, y: 249, height: 112, sheet: null, order: RENDER_LAYER.decorBack },
-  { key: 'house', x: 214, y: 247, height: 78, order: RENDER_LAYER.decorBack },
+  { key: 'tower', x: -152, y: 252, height: 142, sheet: null, order: RENDER_LAYER.decorBack },
+  { key: 'house', x: 152, y: 250, height: 104, order: RENDER_LAYER.decorBack },
   { key: 'tree', x: -318, y: 236, height: 138, animated: true, order: RENDER_LAYER.decorBack },
   { key: 'tree_alt', x: 322, y: 233, height: 132, animated: true, order: RENDER_LAYER.decorBack },
-  { key: 'tree', x: -228, y: 196, height: 152, animated: true, order: RENDER_LAYER.decorFront },
-  { key: 'tree_alt', x: 236, y: 191, height: 146, animated: true, order: RENDER_LAYER.decorFront },
+  { key: 'tree', x: -238, y: 196, height: 152, animated: true, order: RENDER_LAYER.decorFront },
+  { key: 'tree_alt', x: 246, y: 191, height: 146, animated: true, order: RENDER_LAYER.decorFront },
   { key: 'bush', x: -150, y: 172, height: 40, animated: true, order: RENDER_LAYER.decorFront },
   { key: 'bush', x: 158, y: 166, height: 38, animated: true, order: RENDER_LAYER.decorFront },
   { key: 'deco_sign', x: -196, y: 150, height: 62, order: RENDER_LAYER.decorFront },
