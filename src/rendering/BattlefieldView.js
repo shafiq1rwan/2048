@@ -11,8 +11,8 @@ import { FAMILY_FX } from '../data/enemies.js';
  * edges, which used to stand at almost the same x and swallow them.
  */
 const DECOR = [
-  { key: 'tower', x: -152, y: 252, height: 142, sheet: null, order: RENDER_LAYER.decorBack },
-  { key: 'house', x: 152, y: 250, height: 104, order: RENDER_LAYER.decorBack },
+  { key: 'tower', x: -196, y: 228, height: 142, sheet: null, order: RENDER_LAYER.decorBack },
+  { key: 'house', x: 196, y: 226, height: 104, order: RENDER_LAYER.decorBack },
   { key: 'tree', x: -318, y: 236, height: 138, animated: true, order: RENDER_LAYER.decorBack },
   { key: 'tree_alt', x: 322, y: 233, height: 132, animated: true, order: RENDER_LAYER.decorBack },
   { key: 'tree', x: -238, y: 196, height: 152, animated: true, order: RENDER_LAYER.decorFront },

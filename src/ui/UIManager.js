@@ -551,11 +551,13 @@ export class UIManager {
   mergeDemoHtml() {
     const recruit = getUnit(1).sprite;
     const swordsman = getUnit(2).sprite;
+    // The frame must fit the slot's INNER box (56px minus 3px borders,
+    // border-box), or overflow:hidden shaves the tile's edges.
     const box = (sprite, extra = '') =>
       `<span class="demo-slot ${extra}"><span class="sprite-frame" style="${this.spriteCropStyle(
         sprite,
-        56,
-        0.82,
+        48,
+        0.84,
       )}"></span></span>`;
     return `
       <div class="merge-demo">

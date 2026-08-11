@@ -14,7 +14,7 @@ export const DESIGN = {
 /**
  * Vertical budget across the 1000-unit design box:
  *   500 .. 382   top HUD (enemy name, HP, countdown)   118
- *   382 ..  98   battlefield (horizon at 244, enemy at 226)
+ *   382 ..  98   battlefield (horizon at 244, enemy at 202)
  *    98 .. -390  board frame (488 tall)
  *  -396 .. -500  bottom HUD (player HP, level, XP, gold)  104
  */
@@ -42,8 +42,9 @@ export const GRID_EXTENT = BOARD.size * BOARD.cell + (BOARD.size - 1) * BOARD.ga
 export const SCENE = {
   /** World Y where the grass surface begins. */
   groundY: 244,
-  /** World Y of the enemy's feet. */
-  enemyFeetY: 226,
+  /** World Y of the enemy's feet — well below the horizon so it stands
+   *  ON the field rather than hovering at the sky line. */
+  enemyFeetY: 202,
   /** Rendered character height (design units) for a normal enemy. */
   enemyHeight: 120,
   /** Rendered character height for a boss. */

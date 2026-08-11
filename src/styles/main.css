@@ -793,10 +793,11 @@ img {
   overflow-y: auto;
   padding: max(20px, env(safe-area-inset-top, 0px)) 22px
     max(20px, env(safe-area-inset-bottom, 0px));
+  /* forest dusk — echoes the battlefield's grass instead of flat navy */
   background:
-    radial-gradient(120% 70% at 50% -8%, rgba(122, 190, 255, 0.16) 0%, rgba(122, 190, 255, 0) 55%),
-    radial-gradient(130% 80% at 50% 112%, rgba(245, 197, 66, 0.1) 0%, rgba(245, 197, 66, 0) 55%),
-    linear-gradient(180deg, #2c3560 0%, #1d2340 48%, #12162a 100%);
+    radial-gradient(120% 70% at 50% -8%, rgba(150, 225, 170, 0.14) 0%, rgba(150, 225, 170, 0) 55%),
+    radial-gradient(130% 80% at 50% 112%, rgba(245, 197, 66, 0.12) 0%, rgba(245, 197, 66, 0) 55%),
+    linear-gradient(180deg, #2c4c39 0%, #1e3627 48%, #112016 100%);
   animation: title-in 420ms ease-out;
 }
 
