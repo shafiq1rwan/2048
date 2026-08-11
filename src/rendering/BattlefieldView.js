@@ -79,7 +79,6 @@ export class BattlefieldView {
     this.enemyGlow = null;
     /** Offset applied on top of the enemy's resting position. */
     this.enemyOffset = { x: 0, y: 0 };
-    this.enemyBob = 0;
     this.enemyBusy = false;
     this.animatedDecor = [];
     this.clouds = [];
@@ -576,11 +575,10 @@ export class BattlefieldView {
     const sprite = this.enemySprite;
     if (sprite) {
       sprite.update(dt);
-      if (!this.enemyBusy) {
-        this.enemyBob = Math.sin(this.time * 1.9) * 4;
-      }
-      sprite.position.y =
-        SCENE.enemyFeetY + this.enemyOffset.y + (this.enemyBusy ? 0 : this.enemyBob);
+      // No procedural hover: the sheets carry their own idle animation,
+      // and lifting the whole body off its planted shadow reads as
+      // floating. Feet stay on the ground unless a sequence moves them.
+      sprite.position.y = SCENE.enemyFeetY + this.enemyOffset.y;
       sprite.position.x = this.enemyOffset.x;
       if (this.enemyShadow) {
         this.enemyShadow.position.x = sprite.position.x;
